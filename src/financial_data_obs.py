@@ -16,11 +16,22 @@ import logging
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def get_env_vars():
+    """Get environment variables with proper checks"""
+    env_vars = {
+        'chrome_binary': os.getenv('CHROME_BIN', '/usr/bin/google-chrome'),
+        'chromedriver_path': os.getenv('CHROMEDRIVER_PATH', '/usr/local/bin/chromedriver'),
+        'python_path': os.getenv('PYTHONPATH', '/opt/render/project/src'),
+        'is_render': os.getenv('RENDER', 'false').lower() == 'true'
+    }
+    logging.info(f"Environment variables: {env_vars}")
+    return env_vars
+
 def scrape_forex_factory_calendar():
     url = "https://www.forexfactory.com/calendar"
     
     logging.info("Starting scrape_forex_factory_calendar function")
-    logging.info(f"RENDER environment variable: {'RENDER' in os.environ}")
+    env_vars = get_env_vars()
     logging.info(f"Current working directory: {os.getcwd()}")
     
     chrome_options = Options()
@@ -33,13 +44,18 @@ def scrape_forex_factory_calendar():
     chrome_options.add_argument('--disable-blink-features=AutomationControlled')
     chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.90 Safari/537.36')
 
-    if "RENDER" in os.environ:
-        chrome_binary = os.getenv('CHROME_BIN', '/usr/bin/google-chrome')
-        chromedriver_path = os.getenv('CHROMEDRIVER_PATH', '/usr/local/bin/chromedriver')
-        logging.info(f"Using Chrome binary: {chrome_binary}")
-        logging.info(f"Using ChromeDriver path: {chromedriver_path}")
-        chrome_options.binary_location = chrome_binary
-        service = Service(executable_path=chromedriver_path)
+    if env_vars['is_render']:
+        logging.info(f"Using Chrome binary: {env_vars['chrome_binary']}")
+        logging.info(f"Using ChromeDriver path: {env_vars['chromedriver_path']}")
+        chrome_options.binary_location = env_vars['chrome_binary']
+        service = Service(executable_path=env_vars['chromedriver_path'])
+        
+        # Verify executable files exist
+        for path in [env_vars['chrome_binary'], env_vars['chromedriver_path']]:
+            if os.path.exists(path):
+                logging.info(f"Found executable at {path}")
+            else:
+                logging.error(f"Executable not found at {path}")
     else:
         service = Service(executable_path="chromedriver")
 
@@ -76,7 +92,6 @@ def scrape_forex_factory_calendar():
         calendar_table = soup.find('table', class_='calendar__table')
         if not calendar_table:
             logging.error("Calendar table not found in parsed HTML")
-            # Log a sample of the page source to see what we're dealing with
             logging.info(f"Page source sample: {page_source[:500]}...")
             return []
 
@@ -85,7 +100,6 @@ def scrape_forex_factory_calendar():
         logging.info(f"Found {len(rows)} calendar rows")
 
         if len(rows) == 0:
-            # Log alternative row finding attempt
             all_rows = soup.find_all('tr')
             logging.info(f"Total tr elements found: {len(all_rows)}")
             for i, row in enumerate(all_rows[:5]):
