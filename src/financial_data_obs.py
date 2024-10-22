@@ -28,22 +28,26 @@ def scrape_forex_factory_calendar():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--window-size=1920x1080")
     chrome_options.add_argument("--disable-extensions")
     chrome_options.add_argument('--disable-blink-features=AutomationControlled')
     chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
 
     if "RENDER" in os.environ:
-        chrome_binary = os.getenv('CHROME_BIN', '/usr/bin/chromium')
+        chrome_binary = os.getenv('CHROME_BIN', '/usr/bin/google-chrome')
         logging.info(f"Using Chrome binary: {chrome_binary}")
         chrome_options.binary_location = chrome_binary
 
     try:
         logging.info("Initializing Chrome driver")
         driver = webdriver.Chrome(options=chrome_options)
-        driver.implicitly_wait(10)
+        logging.info("Chrome driver initialized successfully")
         
+        driver.implicitly_wait(10)
         logging.info(f"Fetching data from {url}")
+        
         driver.get(url)
+        logging.info("Page loaded, waiting for content")
         
         # Wait for table to load
         try:
@@ -56,19 +60,31 @@ def scrape_forex_factory_calendar():
             logging.error(f"Timeout waiting for calendar table: {e}")
         
         page_source = driver.page_source
+        logging.info(f"Page source length: {len(page_source)}")
+        
         driver.quit()
+        logging.info("Browser closed")
         
         soup = BeautifulSoup(page_source, 'html.parser')
         logging.info("BeautifulSoup object created")
         
         calendar_table = soup.find('table', class_='calendar__table')
         if not calendar_table:
-            logging.error("Calendar table not found")
+            logging.error("Calendar table not found in parsed HTML")
+            # Log a sample of the page source to see what we're dealing with
+            logging.info(f"Page source sample: {page_source[:500]}...")
             return []
 
         events = []
         rows = soup.select('tr.calendar_row, tr.calendar__row')
         logging.info(f"Found {len(rows)} calendar rows")
+
+        if len(rows) == 0:
+            # Log alternative row finding attempt
+            all_rows = soup.find_all('tr')
+            logging.info(f"Total tr elements found: {len(all_rows)}")
+            for i, row in enumerate(all_rows[:5]):
+                logging.info(f"Row {i} classes: {row.get('class', 'no class')}")
 
         current_date = None
 
@@ -107,6 +123,10 @@ def scrape_forex_factory_calendar():
                 continue
 
         logging.info(f"Total events scraped: {len(events)}")
+        # Log first few events if any found
+        if events:
+            logging.info(f"Sample events: {events[:2]}")
+        
         return events
 
     except Exception as e:
