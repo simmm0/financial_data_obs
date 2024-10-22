@@ -10,14 +10,9 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import time
 import logging
-from flask import Flask, render_template_string, jsonify, send_from_directory
-from flask_cors import CORS
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-
-app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
 
 def scrape_forex_factory_calendar():
     url = "https://www.forexfactory.com/calendar"
@@ -125,21 +120,3 @@ def scrape_forex_factory_calendar():
         if 'driver' in locals():
             driver.quit()
         return []
-
-@app.route('/api/calendar')
-def get_calendar():
-    calendar = scrape_forex_factory_calendar()
-    return jsonify(calendar)
-
-@app.route('/')
-def serve_index():
-    return send_from_directory('.', 'index.html')
-
-if __name__ == '__main__':
-    try:
-        logging.info("Starting the Flask application")
-        port = int(os.environ.get("PORT", 10000))
-        app.run(host="0.0.0.0", port=port, debug=True)
-    except Exception as e:
-        logging.error(f"An error occurred while starting the application: {str(e)}")
-        logging.error(traceback.format_exc())
