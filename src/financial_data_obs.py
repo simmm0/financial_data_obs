@@ -34,18 +34,18 @@ def scrape_forex_factory_calendar():
     try:
         if "RENDER" in os.environ:
             logging.info("Checking Chromium and ChromeDriver installation:")
-            logging.info(f"Chromium exists: {os.path.exists('/usr/bin/chromium')}")
-            logging.info(f"ChromeDriver exists: {os.path.exists('/usr/bin/chromedriver')}")
+            logging.info(f"Chromium exists: {os.path.exists('/tmp/chrome/chromium')}")
+            logging.info(f"ChromeDriver exists: {os.path.exists('/tmp/chrome/chromedriver')}")
             
-            chrome_options.binary_location = "/usr/bin/chromium"
-            service = Service(executable_path="/usr/bin/chromedriver")
+            chrome_options.binary_location = "/tmp/chrome/chromium"
+            service = Service(executable_path="/tmp/chrome/chromedriver")
             
             # Log additional path information
             logging.info(f"Chromium binary location: {chrome_options.binary_location}")
             logging.info(f"ChromeDriver path: {service.path}")
         else:
             service = Service(ChromeDriverManager().install())
-            
+
         driver = webdriver.Chrome(service=service, options=chrome_options)
         driver.implicitly_wait(10)  # Add implicit wait
         

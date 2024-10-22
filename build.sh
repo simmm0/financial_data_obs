@@ -14,24 +14,17 @@ echo "Verifying installations..."
 which chromium
 which chromedriver
 
+# Create directory in /tmp (which is writable)
+mkdir -p /tmp/chrome
+chmod 777 /tmp/chrome
+
+# Create symlinks in the writable directory
+ln -sf $(which chromium) /tmp/chrome/chromium
+ln -sf $(which chromedriver) /tmp/chrome/chromedriver
+
 # Install Python requirements
 pip install -r requirements.txt
 
-# Print installation locations
-echo "Chromium location:"
-whereis chromium
-echo "ChromeDriver location:"
-whereis chromedriver
-
-# Create necessary directories and set permissions
-mkdir -p /opt/chromedriver
-chmod 777 /opt/chromedriver
-
-# Create symlinks if needed
-ln -sf $(which chromium) /usr/bin/chromium-browser
-ln -sf $(which chromedriver) /opt/chromedriver/chromedriver
-
-# Verify final paths
+# Print final paths
 echo "Final verification:"
-ls -l /usr/bin/chromium-browser
-ls -l /opt/chromedriver/chromedriver
+ls -l /tmp/chrome/
