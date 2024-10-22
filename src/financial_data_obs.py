@@ -1,6 +1,10 @@
 import sys
 import traceback
 import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import time
@@ -14,20 +18,35 @@ app = Flask(__name__)
 
 def scrape_forex_factory_calendar():
     url = "https://www.forexfactory.com/calendar"
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept-Language': 'en-US,en;q=0.9',
-    }
+    # headers = {
+    #    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    #    'Accept-Language': 'en-US,en;q=0.9',
+    #}
+    
+    # Setup headless Chrome
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+
+    # Setup Chrome WebDriver using ChromeDriverManager
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     
     try:
         logging.info(f"Fetching data from {url}")
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        logging.info(f"Response status code: {response.status_code}")
+        driver.get(url)
+
+        # Wait for the page to load (adjust time if needed)
+        driver.implicitly_wait(10)
         
-        soup = BeautifulSoup(response.text, 'html.parser')
+        # Use BeautifulSoup to parse the page source
+        soup = BeautifulSoup(driver.page_source, 'html.parser')
         logging.info(f"BeautifulSoup object created")
         
+        # Close the Selenium driver
+        driver.quit()
+
+        # Parse the calendar table
         calendar_table = soup.find('table', class_='calendar__table')
         if not calendar_table:
             logging.error("Calendar table not found")
@@ -37,22 +56,16 @@ def scrape_forex_factory_calendar():
         rows = soup.select('tr.calendar_row, tr.calendar__row')
         logging.info(f"Found {len(rows)} calendar rows")
 
-        # Initialize current_date to None
         current_date = None
 
         for row in rows:
             try:
-                # First, try to find a date in this row
-                date_elem = row.find('td', class_='date')
-                if not date_elem:  # If not found with 'date', try with 'calendar__date'
-                    date_elem = row.find('td', class_='calendar__date')
+                # Try to find the date in this row
+                date_elem = row.find('td', class_='date') or row.find('td', class_='calendar__date')
                 
-                # If we found a date element and it has text, update our current_date
                 if date_elem and date_elem.text.strip():
-                    raw_date = date_elem.text.strip()
-                    if raw_date:
-                        current_date = raw_date
-                        logging.info(f"Found new date: {current_date}")
+                    current_date = date_elem.text.strip()
+                    logging.info(f"Found new date: {current_date}")
 
                 # Get time and event details
                 time_elem = row.find(['td', 'time'], class_=['calendar__time', 'time'])
@@ -64,7 +77,7 @@ def scrape_forex_factory_calendar():
                     currency = currency_elem.text.strip().upper()
                     event = event_elem.text.strip()
 
-                    # Check if this is a USD or ALL event
+                    # Filter USD and ALL events
                     if currency not in ["USD", "ALL"]:
                         continue
                     
@@ -89,6 +102,7 @@ def scrape_forex_factory_calendar():
     except Exception as e:
         logging.error(f"Error scraping calendar: {str(e)}")
         logging.error(traceback.format_exc())
+        driver.quit()
         return []
 
 @app.route('/')
