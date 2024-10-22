@@ -106,14 +106,37 @@
     </div>
 
     <script>
+        // Fetch data from the Flask app's /api/calendar endpoint
         function fetchCalendarData() {
-            // In a real implementation, this would fetch data from your server
-            // For now, we'll just show a message
-            document.getElementById('calendar-data').innerHTML = 
-                'Please set up the server endpoint to fetch calendar data';
-            document.getElementById('update-time').textContent = 
-                new Date().toLocaleString();
+            fetch('/api/calendar')
+                .then(response => response.json())  // Parse the response as JSON
+                .then(data => {
+                    // Assuming the data is a list of events, format it into HTML
+                    let calendarHTML = '<ul>';
+                    data.forEach(event => {
+                        calendarHTML += `
+                            <li>
+                                <strong>${event.date}</strong>: 
+                                ${event.event} (${event.impact})
+                            </li>
+                        `;
+                    });
+                    calendarHTML += '</ul>';
+
+                    // Insert the formatted calendar data into the page
+                    document.getElementById('calendar-data').innerHTML = calendarHTML;
+
+                    // Update the last updated time
+                    document.getElementById('update-time').textContent = new Date().toLocaleString();
+                })
+                .catch(error => {
+                    console.error('Error fetching calendar data:', error);
+                    document.getElementById('calendar-data').innerHTML = 'Error loading data.';
+                });
         }
+
+        // Call the function to fetch data when the page loads
+        fetchCalendarData();
 
         function startTimer(duration, display) {
             var timer = duration, minutes, seconds;
