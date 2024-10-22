@@ -10,67 +10,70 @@ echo "Current directory: $PWD"
 # Save the project root
 PROJECT_ROOT=$PWD
 
-# Create necessary directories
-CHROME_DIR="$HOME/chrome"
-BIN_DIR="$CHROME_DIR/bin"
-LIB_DIR="$CHROME_DIR/lib"
-
-mkdir -p $CHROME_DIR $BIN_DIR $LIB_DIR
-
+# Create chrome directory in project folder
+CHROME_DIR="/opt/render/chrome"
+mkdir -p $CHROME_DIR
 cd $CHROME_DIR
 
-# Install libssl1.1 in the correct location
-echo "Installing libssl1.1..."
+# Create lib directory for SSL libraries
+mkdir -p $CHROME_DIR/lib
+
+# Install SSL libraries
+echo "Installing SSL libraries..."
 wget http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb
 dpkg -x libssl1.1_1.1.1f-1ubuntu2_amd64.deb .
-mv usr/lib/x86_64-linux-gnu/libssl.so.1.1 $LIB_DIR/
-mv usr/lib/x86_64-linux-gnu/libcrypto.so.1.1 $LIB_DIR/
-rm -rf usr etc libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+mv usr/lib/x86_64-linux-gnu/libssl.so.1.1 $CHROME_DIR/lib/
+mv usr/lib/x86_64-linux-gnu/libcrypto.so.1.1 $CHROME_DIR/lib/
+rm -rf usr etc
+rm libssl1.1_1.1.1f-1ubuntu2_amd64.deb
 
 echo "Installing Python requirements..."
 pip install -r $PROJECT_ROOT/requirements.txt
 
-# Set up Chrome
-echo "Setting up Chrome..."
-wget -q "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb"
+# Download and set up Chrome
+echo "Downloading Chrome..."
+wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+mkdir -p chrome-linux
 dpkg -x google-chrome-stable_current_amd64.deb chrome-linux/
 CHROME_BIN="$CHROME_DIR/chrome-linux/opt/google/chrome/chrome"
-chmod +x $CHROME_BIN
+chmod +x $CHROME_BIN || true
 rm google-chrome-stable_current_amd64.deb
 
-# Set up ChromeDriver
+# Download and set up ChromeDriver
 echo "Setting up ChromeDriver..."
 wget -q "https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip"
-unzip -q chromedriver_linux64.zip -d $BIN_DIR
-chmod +x $BIN_DIR/chromedriver
+unzip -q chromedriver_linux64.zip
+chmod +x chromedriver
+mv chromedriver $CHROME_DIR/
+CHROMEDRIVER_PATH="$CHROME_DIR/chromedriver"
 rm chromedriver_linux64.zip
 
-# Create environment setup script
+# Print file permissions and test executables
+echo "Checking file permissions..."
+ls -l $CHROME_BIN
+ls -l $CHROMEDRIVER_PATH
+ls -l $CHROME_DIR/lib/libssl.so.1.1
+
+# Create environment variables file
 cat << EOF > $PROJECT_ROOT/set_env.sh
 #!/usr/bin/env bash
-export PATH="$BIN_DIR:\$PATH"
-export LD_LIBRARY_PATH="$LIB_DIR:\$LD_LIBRARY_PATH"
 export CHROME_BIN="$CHROME_BIN"
-export CHROMEDRIVER_PATH="$BIN_DIR/chromedriver"
-export CHROME_USER_DATA_DIR="$CHROME_DIR/user-data"
+export CHROMEDRIVER_PATH="$CHROMEDRIVER_PATH"
+export PATH="$CHROME_DIR:\$PATH"
+export LD_LIBRARY_PATH="$CHROME_DIR/lib:\$LD_LIBRARY_PATH"
+export PYTHONPATH="$PROJECT_ROOT:\$PYTHONPATH"
 export CHROME_FLAGS="--no-sandbox --headless --disable-gpu --disable-dev-shm-usage --disable-software-rasterizer --remote-debugging-port=9222 --disable-features=VizDisplayCompositor"
 EOF
 chmod +x $PROJECT_ROOT/set_env.sh
 
-# Verify installations
-echo "Verifying installations..."
-echo "Directory structure:"
-ls -R $CHROME_DIR
-
-echo "Chrome binary: $CHROME_BIN"
-[ -f "$CHROME_BIN" ] && echo "✓ Chrome binary found" || echo "✗ Chrome binary missing"
-
-echo "ChromeDriver: $BIN_DIR/chromedriver"
-[ -f "$BIN_DIR/chromedriver" ] && echo "✓ ChromeDriver found" || echo "✗ ChromeDriver missing"
-
-echo "SSL libraries:"
-[ -f "$LIB_DIR/libssl.so.1.1" ] && echo "✓ libssl.so.1.1 found" || echo "✗ libssl.so.1.1 missing"
-[ -f "$LIB_DIR/libcrypto.so.1.1" ] && echo "✓ libcrypto.so.1.1 found" || echo "✗ libcrypto.so.1.1 missing"
+echo "Testing ChromeDriver..."
+if [ -x "$CHROMEDRIVER_PATH" ]; then
+    echo "ChromeDriver is executable"
+    $CHROMEDRIVER_PATH --version || echo "ChromeDriver version check failed"
+else
+    echo "ChromeDriver is not executable"
+    ls -l $CHROMEDRIVER_PATH
+fi
 
 cd $PROJECT_ROOT
 echo "Build process complete."

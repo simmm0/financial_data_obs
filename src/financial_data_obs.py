@@ -85,18 +85,43 @@ def scrape_forex_factory_calendar():
     env_vars = get_env_vars()
     logging.info(f"Current working directory: {os.getcwd()}")
     
+    # Ensure the chromedriver exists and is executable
+    if not os.path.exists(env_vars['chromedriver_path']):
+        logging.error(f"ChromeDriver not found at {env_vars['chromedriver_path']}")
+        return []
+    
+    if not os.access(env_vars['chromedriver_path'], os.X_OK):
+        logging.error(f"ChromeDriver at {env_vars['chromedriver_path']} is not executable")
+        try:
+            os.chmod(env_vars['chromedriver_path'], 0o755)
+            logging.info("Fixed ChromeDriver permissions")
+        except Exception as e:
+            logging.error(f"Failed to fix ChromeDriver permissions: {e}")
+            return []
+    
     chrome_options = get_chrome_options(env_vars['chrome_binary'])
     
     try:
         logging.info(f"Using ChromeDriver at: {env_vars['chromedriver_path']}")
-        # Create Service object with log output
         service = Service(
             executable_path=env_vars['chromedriver_path'],
             log_path='/tmp/chromedriver.log'
         )
+
+        # Create a new WebDriver instance without using Selenium Manager
+        os.environ['webdriver.chrome.driver'] = env_vars['chromedriver_path']
         
-        driver = webdriver.Chrome(service=service, options=chrome_options)
+        driver = webdriver.Chrome(
+            service=service,
+            options=chrome_options
+        )
+        
         logging.info("Chrome driver initialized successfully")
+        
+        # Test if the driver is working
+        logging.info("Testing driver with simple command...")
+        driver.get("about:blank")
+        logging.info("Driver test successful")
         
         driver.implicitly_wait(10)
         logging.info(f"Fetching data from {url}")
@@ -113,6 +138,8 @@ def scrape_forex_factory_calendar():
             logging.info("Calendar table found on page")
         except Exception as e:
             logging.error(f"Timeout waiting for calendar table: {e}")
+            if driver.page_source:
+                logging.info(f"Page source preview: {driver.page_source[:500]}")
         
         page_source = driver.page_source
         logging.info(f"Page source length: {len(page_source)}")
