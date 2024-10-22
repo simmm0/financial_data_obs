@@ -138,7 +138,8 @@ def serve_index():
 if __name__ == '__main__':
     try:
         logging.info("Starting the Flask application")
-        app.run(debug=True)
+        port = int(os.environ.get("PORT", 10000))
+        app.run(host="0.0.0.0", port=port, debug=True)
     except Exception as e:
         logging.error(f"An error occurred while starting the application: {str(e)}")
         logging.error(traceback.format_exc())
