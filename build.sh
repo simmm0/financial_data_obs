@@ -45,7 +45,8 @@ CHROMEDRIVER_PATH="$CHROME_DIR/chromedriver"
 wget -q "https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip"
 unzip -q chromedriver_linux64.zip
 chmod +x chromedriver
-mv chromedriver $CHROMEDRIVER_PATH
+# Instead of moving, just set the correct path
+CHROMEDRIVER_PATH="$CHROME_DIR/chromedriver"
 rm chromedriver_linux64.zip
 
 # Set directory permissions
@@ -82,6 +83,16 @@ LD_LIBRARY_PATH=$CHROME_DIR/lib
 PYTHONPATH=$PROJECT_ROOT
 RENDER=true
 EOF
+
+# Test ChromeDriver
+echo "Testing ChromeDriver..."
+if [ -x "$CHROMEDRIVER_PATH" ]; then
+    echo "ChromeDriver is executable"
+    $CHROMEDRIVER_PATH --version || echo "ChromeDriver version check failed"
+else
+    echo "ChromeDriver is not executable"
+    ls -l $CHROMEDRIVER_PATH
+fi
 
 cd $PROJECT_ROOT
 echo "Build process complete."
