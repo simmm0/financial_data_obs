@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Economic Calendar</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            color: #1e3a5f;
+            margin: 0; 
+            padding: 10px;
+            font-size: 13px;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto;
+            background: #f0f4f8;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 8px 8px 16px #d1d9e6,
+                       -8px -8px 16px #ffffff;
+        }
+        h1 { 
+            color: #1e3a5f;
+            padding-bottom: 8px;
+            margin: 0 0 10px 0;
+            font-weight: 600;
+            font-size: 18px;
+        }
+        table { 
+            width: 100%; 
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 10px;
+            background: #f0f4f8;
+            border-radius: 8px;
+            box-shadow: inset 3px 3px 5px #d1d9e6,
+                       inset -3px -3px 5px #ffffff;
+            padding: 8px;
+        }
+        th, td { 
+            padding: 4px 8px;
+            text-align: left;
+            border-bottom: 1px solid #e0e5ec;
+            font-size: 12px;
+            line-height: 1.2;
+        }
+        th { 
+            background-color: #f0f4f8;
+            color: #1e3a5f;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        tr:hover {
+            background-color: rgba(33, 150, 243, 0.05);
+        }
+        .time-cell { 
+            color: #666;
+            width: 75px;
+        }
+        .currency-cell { 
+            color: #2196f3;
+            font-weight: 600;
+            width: 60px;
+        }
+        td:first-child {
+            width: 80px;
+        }
+        #timer { 
+            font-size: 11px;
+            margin-top: 8px;
+            text-align: right;
+            color: #666;
+            background: #f0f4f8;
+            padding: 4px 8px;
+            border-radius: 5px;
+            display: inline-block;
+            float: right;
+            box-shadow: 2px 2px 4px #d1d9e6,
+                       -2px -2px 4px #ffffff;
+        }
+        .last-updated { 
+            color: #666;
+            font-size: 10px;
+            text-align: right;
+            margin-top: 5px;
+            clear: both;
+        }
+        tr:nth-child(even) { 
+            background-color: rgba(240, 244, 248, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Economic Calendar</h1>
+        <div id="calendar-data">Loading...</div>
+        <div id="timer">Next update in <span id="time">05:00</span></div>
+        <p class="last-updated">Last updated: <span id="update-time"></span></p>
+    </div>
+
+    <script>
+        function fetchCalendarData() {
+            // In a real implementation, this would fetch data from your server
+            // For now, we'll just show a message
+            document.getElementById('calendar-data').innerHTML = 
+                'Please set up the server endpoint to fetch calendar data';
+            document.getElementById('update-time').textContent = 
+                new Date().toLocaleString();
+        }
+
+        function startTimer(duration, display) {
+            var timer = duration, minutes, seconds;
+            setInterval(function () {
+                minutes = parseInt(timer / 60, 10);
+                seconds = parseInt(timer % 60, 10);
+
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                display.textContent = minutes + ":" + seconds;
+
+                if (--timer < 0) {
+                    timer = duration;
+                    fetchCalendarData();
+                }
+            }, 1000);
+        }
+
+        window.onload = function () {
+            fetchCalendarData();
+            var fiveMinutes = 60 * 5,
+                display = document.querySelector('#time');
+            startTimer(fiveMinutes, display);
+        };
+    </script>
+</body>
+</html>
