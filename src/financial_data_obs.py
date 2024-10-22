@@ -20,7 +20,7 @@ def get_env_vars():
     """Get environment variables with proper checks"""
     env_vars = {
         'chrome_binary': os.getenv('CHROME_BIN', '/usr/bin/google-chrome'),
-        'chromedriver_path': os.getenv('CHROMEDRIVER_PATH', '/usr/local/bin/chromedriver'),
+        'chromedriver_path': os.getenv('CHROMEDRIVER_PATH', '/usr/bin/chromedriver'),
         'python_path': os.getenv('PYTHONPATH', '/opt/render/project/src'),
         'is_render': os.getenv('RENDER', 'false').lower() == 'true'
     }
@@ -44,38 +44,21 @@ def scrape_forex_factory_calendar():
     chrome_options.add_argument('--disable-blink-features=AutomationControlled')
     chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.90 Safari/537.36')
 
-    if env_vars['is_render']:
-        # Try both Chrome and Chromium paths
-        chrome_paths = [
-            '/usr/bin/google-chrome',
-            '/usr/bin/chromium',
-            '/usr/bin/chromium-browser'
-        ]
-        chromedriver_paths = [
-            '/usr/local/bin/chromedriver',
-            '/usr/bin/chromedriver'
-        ]
-        
-        # Find the first available Chrome binary
-        for chrome_path in chrome_paths:
-            if os.path.exists(chrome_path):
-                chrome_options.binary_location = chrome_path
-                logging.info(f"Using Chrome binary: {chrome_path}")
-                break
-        else:
-            logging.error("No Chrome binary found in any expected location")
-        
-        # Find the first available ChromeDriver
-        for driver_path in chromedriver_paths:
-            if os.path.exists(driver_path):
-                service = Service(executable_path=driver_path)
-                logging.info(f"Using ChromeDriver path: {driver_path}")
-                break
-        else:
-            logging.error("No ChromeDriver found in any expected location")
-            service = Service(executable_path=env_vars['chromedriver_path'])
-    else:
-        service = Service(executable_path="chromedriver")
+    # Set up Chrome paths
+    chrome_binary = env_vars['chrome_binary']
+    chromedriver_path = env_vars['chromedriver_path']
+
+    logging.info(f"Using Chrome binary: {chrome_binary}")
+    logging.info(f"Using ChromeDriver path: {chromedriver_path}")
+
+    # Check if files exist
+    if not os.path.exists(chrome_binary):
+        logging.error(f"Chrome binary not found at {chrome_binary}")
+    if not os.path.exists(chromedriver_path):
+        logging.error(f"ChromeDriver not found at {chromedriver_path}")
+
+    chrome_options.binary_location = chrome_binary
+    service = Service(executable_path=chromedriver_path)
 
     try:
         logging.info("Initializing Chrome driver")

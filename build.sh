@@ -2,44 +2,29 @@
 
 echo "Starting build process..."
 
-# Print initial environment state
-echo "Initial environment:"
-echo "PYTHONPATH=$PYTHONPATH"
-echo "RENDER=$RENDER"
-echo "CHROME_BIN=$CHROME_BIN"
-echo "CHROMEDRIVER_PATH=$CHROMEDRIVER_PATH"
-
 # Update package list and install dependencies
 apt-get update
-apt-get install -y wget gnupg curl unzip chromium chromium-driver
+apt-get install -y wget unzip sudo libxss1 libappindicator1 libindicator7 libssl1.1 xvfb
 
-# Create necessary directories
-mkdir -p /usr/local/bin
-mkdir -p /usr/bin
+# Set up Chrome
+echo "Setting up Chrome..."
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+dpkg -i google-chrome-stable_current_amd64.deb || apt-get install -f -y
+rm google-chrome-stable_current_amd64.deb
 
-# Create symlinks with proper names
-ln -sf /usr/bin/chromium /usr/bin/google-chrome || echo "Failed to create Chrome symlink"
-ln -sf /usr/bin/chromedriver /usr/local/bin/chromedriver || echo "Failed to create ChromeDriver symlink"
+# Get Chrome version and download matching ChromeDriver
+CHROME_VERSION=$(google-chrome --version | cut -d ' ' -f 3)
+echo "Chrome version: $CHROME_VERSION"
+CHROMEDRIVER_VERSION=$(wget -qO- "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION%%.*}")
+echo "ChromeDriver version: $CHROMEDRIVER_VERSION"
 
-# Make sure executables are actually there
-if [ ! -f "/usr/bin/chromium" ]; then
-    echo "Error: Chromium not found at /usr/bin/chromium"
-    apt-get install -y chromium
-fi
-
-if [ ! -f "/usr/bin/chromedriver" ]; then
-    echo "Error: ChromeDriver not found at /usr/bin/chromedriver"
-    apt-get install -y chromium-driver
-fi
-
-# Set correct permissions
-chmod +x /usr/bin/chromium || echo "Failed to set Chrome permissions"
-chmod +x /usr/bin/chromedriver || echo "Failed to set ChromeDriver permissions"
-
-# Set up environment variables
-export CHROME_BIN=/usr/bin/google-chrome
-export CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
-export PATH=$PATH:/usr/local/bin:/usr/bin
+# Set up ChromeDriver
+echo "Setting up ChromeDriver..."
+wget "https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip"
+unzip chromedriver_linux64.zip
+mv chromedriver /usr/bin/
+chmod +x /usr/bin/chromedriver
+rm chromedriver_linux64.zip
 
 # Install Python requirements
 echo "Installing Python requirements..."
@@ -47,28 +32,18 @@ pip install -r requirements.txt
 
 # Verify installations
 echo "Verifying installations..."
-echo "Chrome path exists:"
-ls -l /usr/bin/chromium || echo "Chromium not found"
-echo "ChromeDriver path exists:"
-ls -l /usr/bin/chromedriver || echo "ChromeDriver not found"
 echo "Chrome version:"
-chromium --version || echo "Failed to get Chrome version"
+google-chrome --version
 echo "ChromeDriver version:"
-chromedriver --version || echo "Failed to get ChromeDriver version"
+chromedriver --version
 
-# Print all relevant directories
-echo "Directory contents:"
-echo "/usr/bin:"
-ls -l /usr/bin/chrom* || echo "No Chrome files in /usr/bin"
-echo "/usr/local/bin:"
-ls -l /usr/local/bin/chrom* || echo "No Chrome files in /usr/local/bin"
+# Print locations
+echo "Binary locations:"
+which google-chrome
+which chromedriver
 
-# Print final environment state
-echo "Final environment:"
-echo "PYTHONPATH=$PYTHONPATH"
-echo "RENDER=$RENDER"
-echo "CHROME_BIN=$CHROME_BIN"
-echo "CHROMEDRIVER_PATH=$CHROMEDRIVER_PATH"
-echo "PATH=$PATH"
+# Set environment variables
+export CHROME_BIN=/usr/bin/google-chrome
+export CHROMEDRIVER_PATH=/usr/bin/chromedriver
 
 echo "Build process complete."
