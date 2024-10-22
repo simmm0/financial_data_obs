@@ -75,8 +75,8 @@ def get_chrome_options(chrome_binary):
 def get_env_vars():
     """Get environment variables with proper checks"""
     env_vars = {
-        'chrome_binary': os.getenv('CHROME_BIN', '/opt/render/project/chrome/chrome-linux/opt/google/chrome/chrome'),
-        'chromedriver_path': os.getenv('CHROMEDRIVER_PATH', '/opt/render/project/chrome/chromedriver'),
+        'chrome_binary': os.getenv('CHROME_BIN', f"{os.getenv('HOME')}/chrome/chrome-linux/opt/google/chrome/chrome"),
+        'chromedriver_path': os.getenv('CHROMEDRIVER_PATH', f"{os.getenv('HOME')}/chrome/chromedriver"),
         'python_path': os.getenv('PYTHONPATH', '/opt/render/project/src'),
         'is_render': os.getenv('RENDER', 'false').lower() == 'true'
     }
