@@ -44,7 +44,6 @@ echo "Setting up ChromeDriver..."
 wget -q "https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip"
 unzip -q chromedriver_linux64.zip
 chmod +x chromedriver
-mv chromedriver $CHROME_DIR/
 CHROMEDRIVER_PATH="$CHROME_DIR/chromedriver"
 rm chromedriver_linux64.zip
 
