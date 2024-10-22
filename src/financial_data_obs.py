@@ -16,24 +16,6 @@ import logging
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-import sys
-import os
-import traceback
-import requests
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
-import time
-import logging
-
-# Set up logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-
 def get_chrome_options(chrome_binary):
     chrome_options = Options()
     chrome_options.binary_location = chrome_binary
@@ -74,13 +56,19 @@ def get_chrome_options(chrome_binary):
 
 def get_env_vars():
     """Get environment variables with proper checks"""
+    chrome_dir = os.getenv('HOME', '') + '/chrome'
     env_vars = {
-        'chrome_binary': os.getenv('CHROME_BIN', f"{os.getenv('HOME')}/chrome/chrome-linux/opt/google/chrome/chrome"),
-        'chromedriver_path': os.getenv('CHROMEDRIVER_PATH', f"{os.getenv('HOME')}/chrome/chromedriver"),
+        'chrome_binary': os.getenv('CHROME_BIN', f"{chrome_dir}/chrome-linux/opt/google/chrome/chrome"),
+        'chromedriver_path': os.getenv('CHROMEDRIVER_PATH', f"{chrome_dir}/chromedriver"),
         'python_path': os.getenv('PYTHONPATH', '/opt/render/project/src'),
         'is_render': os.getenv('RENDER', 'false').lower() == 'true'
     }
+    
+    # Add chromedriver directory to PATH
+    os.environ['PATH'] = f"{os.path.dirname(env_vars['chromedriver_path'])}:{os.environ.get('PATH', '')}"
+    
     logging.info(f"Environment variables: {env_vars}")
+    logging.info(f"PATH: {os.environ['PATH']}")
     return env_vars
 
 def scrape_forex_factory_calendar():
@@ -94,7 +82,7 @@ def scrape_forex_factory_calendar():
     service = Service(executable_path=env_vars['chromedriver_path'])
 
     try:
-        logging.info("Initializing Chrome driver")
+        logging.info(f"Using ChromeDriver at: {env_vars['chromedriver_path']}")
         driver = webdriver.Chrome(service=service, options=chrome_options)
         logging.info("Chrome driver initialized successfully")
         
@@ -187,3 +175,6 @@ def scrape_forex_factory_calendar():
         if 'driver' in locals():
             driver.quit()
         return []
+
+if __name__ == '__main__':
+    scrape_forex_factory_calendar()

@@ -15,6 +15,14 @@ CHROME_DIR="$HOME/chrome"
 mkdir -p $CHROME_DIR
 cd $CHROME_DIR
 
+# Install libssl1.1
+echo "Installing libssl1.1..."
+wget http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb
+dpkg -x libssl1.1_1.1.1f-1ubuntu2_amd64.deb .
+cp usr/lib/x86_64-linux-gnu/libssl.so.1.1 /usr/lib/
+cp usr/lib/x86_64-linux-gnu/libcrypto.so.1.1 /usr/lib/
+rm -rf libssl1.1_1.1.1f-1ubuntu2_amd64.deb usr
+
 echo "Installing Python requirements first..."
 pip install -r $PROJECT_ROOT/requirements.txt
 
@@ -41,6 +49,9 @@ if [ ! -f "$CHROMEDRIVER_PATH" ]; then
     chmod +x chromedriver
 fi
 
+# Add chromedriver directory to PATH
+export PATH="$CHROME_DIR:$PATH"
+
 # Clean up downloaded files
 rm -f $CHROME_DEB chromedriver_linux64.zip || true
 
@@ -53,6 +64,8 @@ cat << EOF > $PROJECT_ROOT/set_env.sh
 export CHROME_BIN="$CHROME_BIN"
 export CHROMEDRIVER_PATH="$CHROMEDRIVER_PATH"
 export CHROME_USER_DATA_DIR="$HOME/.chrome-user-data"
+export PATH="$CHROME_DIR:\$PATH"
+export LD_LIBRARY_PATH="/usr/lib:\$LD_LIBRARY_PATH"
 export CHROME_FLAGS="--no-sandbox --headless --disable-gpu --disable-dev-shm-usage --disable-software-rasterizer --remote-debugging-port=9222 --disable-features=VizDisplayCompositor"
 EOF
 chmod +x $PROJECT_ROOT/set_env.sh
