@@ -28,10 +28,9 @@ echo "Setting up Chrome..."
 CHROME_BIN="$CHROME_DIR/chrome-linux/opt/google/chrome/chrome"
 chmod +x $CHROME_BIN
 
-# Download ChromeDriver
+# Download ChromeDriver - using a specific version instead of detecting
 echo "Downloading ChromeDriver..."
-CHROME_VERSION=$(${CHROME_BIN} --version | cut -d ' ' -f 3 | cut -d '.' -f 1)
-CHROMEDRIVER_VERSION=$(wget -qO- https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION})
+CHROMEDRIVER_VERSION="114.0.5735.90"  # Using a stable version
 wget -q "https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip"
 unzip -q chromedriver_linux64.zip
 chmod +x chromedriver
@@ -43,15 +42,14 @@ rm google-chrome-stable_current_amd64.deb chromedriver_linux64.zip
 # Create required directories
 mkdir -p $HOME/.chrome-user-data
 
-# Export environment variables
-export CHROME_BIN
-export CHROMEDRIVER_PATH
-
 # Create a script to set environment variables at runtime
 cat << EOF > $PROJECT_ROOT/set_env.sh
 export CHROME_BIN="$CHROME_BIN"
 export CHROMEDRIVER_PATH="$CHROMEDRIVER_PATH"
 export CHROME_USER_DATA_DIR="$HOME/.chrome-user-data"
+
+# Chrome flags for running in a containerized environment
+export CHROME_FLAGS="--no-sandbox --headless --disable-gpu --disable-dev-shm-usage --disable-software-rasterizer --disable-features=VizDisplayCompositor"
 EOF
 chmod +x $PROJECT_ROOT/set_env.sh
 

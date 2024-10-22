@@ -16,9 +16,34 @@ import logging
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
+import sys
+import os
+import traceback
+import requests
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from bs4 import BeautifulSoup
+from datetime import datetime, timedelta
+import time
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
 def get_chrome_options(chrome_binary):
     chrome_options = Options()
     chrome_options.binary_location = chrome_binary
+    
+    # Get additional flags from environment variable
+    chrome_flags = os.getenv('CHROME_FLAGS', '').split()
+    if chrome_flags:
+        for flag in chrome_flags:
+            if flag not in ['--headless', '--no-sandbox', '--disable-gpu']:  # Avoid duplicates
+                chrome_options.add_argument(flag)
     
     # Required arguments
     chrome_options.add_argument('--headless')
@@ -40,12 +65,17 @@ def get_chrome_options(chrome_binary):
     chrome_options.add_argument('--window-size=1920,1080')
     chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.90 Safari/537.36')
     
+    # Set user data directory if specified
+    user_data_dir = os.getenv('CHROME_USER_DATA_DIR')
+    if user_data_dir:
+        chrome_options.add_argument(f'--user-data-dir={user_data_dir}')
+    
     return chrome_options
 
 def get_env_vars():
     """Get environment variables with proper checks"""
     env_vars = {
-        'chrome_binary': os.getenv('CHROME_BIN', '/opt/render/project/chrome/google-chrome'),
+        'chrome_binary': os.getenv('CHROME_BIN', '/opt/render/project/chrome/chrome-linux/opt/google/chrome/chrome'),
         'chromedriver_path': os.getenv('CHROMEDRIVER_PATH', '/opt/render/project/chrome/chromedriver'),
         'python_path': os.getenv('PYTHONPATH', '/opt/render/project/src'),
         'is_render': os.getenv('RENDER', 'false').lower() == 'true'
