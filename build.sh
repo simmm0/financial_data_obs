@@ -15,13 +15,18 @@ CHROME_DIR="$HOME/chrome"
 mkdir -p $CHROME_DIR
 cd $CHROME_DIR
 
-# Install libssl1.1
+# Create lib directory for SSL
+LIB_DIR="$HOME/lib"
+mkdir -p $LIB_DIR
+
+# Install libssl1.1 in user directory
 echo "Installing libssl1.1..."
 wget http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb
 dpkg -x libssl1.1_1.1.1f-1ubuntu2_amd64.deb .
-cp usr/lib/x86_64-linux-gnu/libssl.so.1.1 /usr/lib/
-cp usr/lib/x86_64-linux-gnu/libcrypto.so.1.1 /usr/lib/
-rm -rf libssl1.1_1.1.1f-1ubuntu2_amd64.deb usr
+mv usr/lib/x86_64-linux-gnu/libssl.so.1.1 $LIB_DIR/
+mv usr/lib/x86_64-linux-gnu/libcrypto.so.1.1 $LIB_DIR/
+rm -rf usr etc
+rm libssl1.1_1.1.1f-1ubuntu2_amd64.deb
 
 echo "Installing Python requirements first..."
 pip install -r $PROJECT_ROOT/requirements.txt
@@ -51,6 +56,8 @@ fi
 
 # Add chromedriver directory to PATH
 export PATH="$CHROME_DIR:$PATH"
+# Add lib directory to LD_LIBRARY_PATH
+export LD_LIBRARY_PATH="$LIB_DIR:$LD_LIBRARY_PATH"
 
 # Clean up downloaded files
 rm -f $CHROME_DEB chromedriver_linux64.zip || true
@@ -65,7 +72,7 @@ export CHROME_BIN="$CHROME_BIN"
 export CHROMEDRIVER_PATH="$CHROMEDRIVER_PATH"
 export CHROME_USER_DATA_DIR="$HOME/.chrome-user-data"
 export PATH="$CHROME_DIR:\$PATH"
-export LD_LIBRARY_PATH="/usr/lib:\$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="$LIB_DIR:\$LD_LIBRARY_PATH"
 export CHROME_FLAGS="--no-sandbox --headless --disable-gpu --disable-dev-shm-usage --disable-software-rasterizer --remote-debugging-port=9222 --disable-features=VizDisplayCompositor"
 EOF
 chmod +x $PROJECT_ROOT/set_env.sh
@@ -73,8 +80,8 @@ chmod +x $PROJECT_ROOT/set_env.sh
 # Print debug information
 echo "Listing chrome directory contents:"
 ls -la $CHROME_DIR
-echo "Listing chrome-linux directory contents:"
-ls -la $CHROME_DIR/chrome-linux/opt/google/chrome || true
+echo "Listing lib directory contents:"
+ls -la $LIB_DIR
 
 # Verify installations
 echo "Verifying installations..."
@@ -93,6 +100,9 @@ if [ -f "$CHROMEDRIVER_PATH" ]; then
 else
     echo "ChromeDriver not found ✗"
 fi
+
+echo "SSL library location:"
+ls -l $LIB_DIR/libssl.so.1.1 || echo "SSL library not found ✗"
 
 # Return to project directory
 cd $PROJECT_ROOT
