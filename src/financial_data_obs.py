@@ -16,6 +16,32 @@ import logging
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def get_chrome_options(chrome_binary):
+    chrome_options = Options()
+    chrome_options.binary_location = chrome_binary
+    
+    # Required arguments
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument('--disable-gpu')
+    
+    # Additional required arguments
+    chrome_options.add_argument('--disable-extensions')
+    chrome_options.add_argument('--disable-software-rasterizer')
+    chrome_options.add_argument('--disable-features=VizDisplayCompositor')
+    chrome_options.add_argument('--disable-features=NetworkService')
+    chrome_options.add_argument('--disable-features=IsolateOrigins,site-per-process')
+    chrome_options.add_argument('--disable-setuid-sandbox')
+    chrome_options.add_argument('--disable-webgl')
+    chrome_options.add_argument('--no-first-run')
+    
+    # Set window size and user agent
+    chrome_options.add_argument('--window-size=1920,1080')
+    chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.90 Safari/537.36')
+    
+    return chrome_options
+
 def get_env_vars():
     """Get environment variables with proper checks"""
     env_vars = {
@@ -34,31 +60,8 @@ def scrape_forex_factory_calendar():
     env_vars = get_env_vars()
     logging.info(f"Current working directory: {os.getcwd()}")
     
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--window-size=1920x1080")
-    chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-    chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.90 Safari/537.36')
-
-    # Set up Chrome paths
-    chrome_binary = env_vars['chrome_binary']
-    chromedriver_path = env_vars['chromedriver_path']
-
-    logging.info(f"Using Chrome binary: {chrome_binary}")
-    logging.info(f"Using ChromeDriver path: {chromedriver_path}")
-
-    # Check if files exist
-    if not os.path.exists(chrome_binary):
-        logging.error(f"Chrome binary not found at {chrome_binary}")
-    if not os.path.exists(chromedriver_path):
-        logging.error(f"ChromeDriver not found at {chromedriver_path}")
-
-    chrome_options.binary_location = chrome_binary
-    service = Service(executable_path=chromedriver_path)
+    chrome_options = get_chrome_options(env_vars['chrome_binary'])
+    service = Service(executable_path=env_vars['chromedriver_path'])
 
     try:
         logging.info("Initializing Chrome driver")
