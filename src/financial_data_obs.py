@@ -45,17 +45,35 @@ def scrape_forex_factory_calendar():
     chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.90 Safari/537.36')
 
     if env_vars['is_render']:
-        logging.info(f"Using Chrome binary: {env_vars['chrome_binary']}")
-        logging.info(f"Using ChromeDriver path: {env_vars['chromedriver_path']}")
-        chrome_options.binary_location = env_vars['chrome_binary']
-        service = Service(executable_path=env_vars['chromedriver_path'])
+        # Try both Chrome and Chromium paths
+        chrome_paths = [
+            '/usr/bin/google-chrome',
+            '/usr/bin/chromium',
+            '/usr/bin/chromium-browser'
+        ]
+        chromedriver_paths = [
+            '/usr/local/bin/chromedriver',
+            '/usr/bin/chromedriver'
+        ]
         
-        # Verify executable files exist
-        for path in [env_vars['chrome_binary'], env_vars['chromedriver_path']]:
-            if os.path.exists(path):
-                logging.info(f"Found executable at {path}")
-            else:
-                logging.error(f"Executable not found at {path}")
+        # Find the first available Chrome binary
+        for chrome_path in chrome_paths:
+            if os.path.exists(chrome_path):
+                chrome_options.binary_location = chrome_path
+                logging.info(f"Using Chrome binary: {chrome_path}")
+                break
+        else:
+            logging.error("No Chrome binary found in any expected location")
+        
+        # Find the first available ChromeDriver
+        for driver_path in chromedriver_paths:
+            if os.path.exists(driver_path):
+                service = Service(executable_path=driver_path)
+                logging.info(f"Using ChromeDriver path: {driver_path}")
+                break
+        else:
+            logging.error("No ChromeDriver found in any expected location")
+            service = Service(executable_path=env_vars['chromedriver_path'])
     else:
         service = Service(executable_path="chromedriver")
 

@@ -11,38 +11,35 @@ echo "CHROMEDRIVER_PATH=$CHROMEDRIVER_PATH"
 
 # Update package list and install dependencies
 apt-get update
-apt-get install -y wget gnupg curl unzip libssl1.1
+apt-get install -y wget gnupg curl unzip chromium chromium-driver
 
-# Install Chrome
-echo "Installing Chrome..."
-wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
-echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google.list
-apt-get update
-apt-get install -y google-chrome-stable
+# Create necessary directories
+mkdir -p /usr/local/bin
+mkdir -p /usr/bin
 
-# Get Chrome version and download matching ChromeDriver
-CHROME_VERSION=$(google-chrome --version | cut -d " " -f3 | cut -d "." -f1-3)
-echo "Installed Chrome version: $CHROME_VERSION"
+# Create symlinks with proper names
+ln -sf /usr/bin/chromium /usr/bin/google-chrome || echo "Failed to create Chrome symlink"
+ln -sf /usr/bin/chromedriver /usr/local/bin/chromedriver || echo "Failed to create ChromeDriver symlink"
 
-# Download and install ChromeDriver
-echo "Installing ChromeDriver..."
-CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION}")
-echo "Matching ChromeDriver version: $CHROMEDRIVER_VERSION"
-wget -q "https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip"
-unzip -q chromedriver_linux64.zip
-mv chromedriver /usr/local/bin/
-chmod +x /usr/local/bin/chromedriver
-
-# Clean up downloaded files
-rm chromedriver_linux64.zip
-
-# Set up environment variables if not already set
-if [ -z "$CHROME_BIN" ]; then
-    export CHROME_BIN=/usr/bin/google-chrome
+# Make sure executables are actually there
+if [ ! -f "/usr/bin/chromium" ]; then
+    echo "Error: Chromium not found at /usr/bin/chromium"
+    apt-get install -y chromium
 fi
-if [ -z "$CHROMEDRIVER_PATH" ]; then
-    export CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
+
+if [ ! -f "/usr/bin/chromedriver" ]; then
+    echo "Error: ChromeDriver not found at /usr/bin/chromedriver"
+    apt-get install -y chromium-driver
 fi
+
+# Set correct permissions
+chmod +x /usr/bin/chromium || echo "Failed to set Chrome permissions"
+chmod +x /usr/bin/chromedriver || echo "Failed to set ChromeDriver permissions"
+
+# Set up environment variables
+export CHROME_BIN=/usr/bin/google-chrome
+export CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
+export PATH=$PATH:/usr/local/bin:/usr/bin
 
 # Install Python requirements
 echo "Installing Python requirements..."
@@ -50,12 +47,21 @@ pip install -r requirements.txt
 
 # Verify installations
 echo "Verifying installations..."
+echo "Chrome path exists:"
+ls -l /usr/bin/chromium || echo "Chromium not found"
+echo "ChromeDriver path exists:"
+ls -l /usr/bin/chromedriver || echo "ChromeDriver not found"
 echo "Chrome version:"
-$CHROME_BIN --version || echo "Failed to get Chrome version"
+chromium --version || echo "Failed to get Chrome version"
 echo "ChromeDriver version:"
-$CHROMEDRIVER_PATH --version || echo "Failed to get ChromeDriver version"
-echo "SSL library:"
-ldconfig -p | grep libssl || echo "SSL library not found"
+chromedriver --version || echo "Failed to get ChromeDriver version"
+
+# Print all relevant directories
+echo "Directory contents:"
+echo "/usr/bin:"
+ls -l /usr/bin/chrom* || echo "No Chrome files in /usr/bin"
+echo "/usr/local/bin:"
+ls -l /usr/local/bin/chrom* || echo "No Chrome files in /usr/local/bin"
 
 # Print final environment state
 echo "Final environment:"
@@ -63,10 +69,6 @@ echo "PYTHONPATH=$PYTHONPATH"
 echo "RENDER=$RENDER"
 echo "CHROME_BIN=$CHROME_BIN"
 echo "CHROMEDRIVER_PATH=$CHROMEDRIVER_PATH"
-
-# Verify paths and permissions
-echo "Verifying paths and permissions..."
-ls -l $CHROME_BIN
-ls -l $CHROMEDRIVER_PATH
+echo "PATH=$PATH"
 
 echo "Build process complete."
