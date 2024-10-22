@@ -20,11 +20,16 @@ app = Flask(__name__)
 def scrape_forex_factory_calendar():
     url = "https://www.forexfactory.com/calendar"
     
+    logging.info("Starting scrape_forex_factory_calendar function")
+    logging.info(f"RENDER environment variable: {'RENDER' in os.environ}")
+    logging.info(f"Current working directory: {os.getcwd()}")
+    
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--disable-extensions")
     chrome_options.add_argument("--remote-debugging-port=9222")
     chrome_options.add_argument('--disable-blink-features=AutomationControlled')
     chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
@@ -32,13 +37,18 @@ def scrape_forex_factory_calendar():
     try:
         if "RENDER" in os.environ:
             # Running on Render
-            chrome_options.binary_location = "/usr/bin/chromium"
-            service = Service("/usr/bin/chromedriver")
+            logging.info("Checking Chromium and ChromeDriver installation:")
+            logging.info(f"Chromium exists: {os.path.exists('/usr/bin/chromium-browser')}")
+            logging.info(f"ChromeDriver exists: {os.path.exists('/opt/chromedriver/chromedriver')}")
+            
+            chrome_options.binary_location = "/usr/bin/chromium-browser"
+            service = Service(executable_path="/opt/chromedriver/chromedriver")
         else:
             # Running locally
             service = Service(ChromeDriverManager().install())
 
         driver = webdriver.Chrome(service=service, options=chrome_options)
+        driver.implicitly_wait(10)  # Add implicit wait
         
         logging.info(f"Fetching data from {url}")
         driver.get(url)
@@ -126,7 +136,9 @@ def index():
         html = """
         <html>
         <head>
-            <title>Economic Calendar</title>
+            <title>Sumo Calendar</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
                 body { 
                     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -143,7 +155,7 @@ def index():
                     padding: 15px;
                     border-radius: 10px;
                     box-shadow: 8px 8px 16px #d1d9e6,
-                            -8px -8px 16px #ffffff;
+                               -8px -8px 16px #ffffff;
                 }
                 h1 { 
                     color: #1e3a5f;
@@ -160,7 +172,7 @@ def index():
                     background: #f0f4f8;
                     border-radius: 8px;
                     box-shadow: inset 3px 3px 5px #d1d9e6,
-                            inset -3px -3px 5px #ffffff;
+                               inset -3px -3px 5px #ffffff;
                     padding: 8px;
                 }
                 th, td { 
@@ -206,7 +218,7 @@ def index():
                     display: inline-block;
                     float: right;
                     box-shadow: 2px 2px 4px #d1d9e6,
-                            -2px -2px 4px #ffffff;
+                               -2px -2px 4px #ffffff;
                 }
                 .last-updated { 
                     color: #666;
@@ -219,35 +231,10 @@ def index():
                     background-color: rgba(240, 244, 248, 0.5);
                 }
             </style>
-            <script>
-                function startTimer(duration, display) {
-                    var timer = duration, minutes, seconds;
-                    setInterval(function () {
-                        minutes = parseInt(timer / 60, 10);
-                        seconds = parseInt(timer % 60, 10);
-
-                        minutes = minutes < 10 ? "0" + minutes : minutes;
-                        seconds = seconds < 10 ? "0" + seconds : seconds;
-
-                        display.textContent = minutes + ":" + seconds;
-
-                        if (--timer < 0) {
-                            timer = duration;
-                            location.reload();
-                        }
-                    }, 1000);
-                }
-
-                window.onload = function () {
-                    var fiveMinutes = 60 * 5,
-                        display = document.querySelector('#time');
-                    startTimer(fiveMinutes, display);
-                };
-            </script>
         </head>
         <body>
             <div class="container">
-                <h1>Economic Calendar</h1>
+                <h1>Sumo Calendar</h1>
                 <table>
                     <tr>
                         <th>Date</th>
