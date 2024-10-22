@@ -56,19 +56,26 @@ def get_chrome_options(chrome_binary):
 
 def get_env_vars():
     """Get environment variables with proper checks"""
-    chrome_dir = os.getenv('HOME', '') + '/chrome'
+    chrome_dir = os.path.join(os.getenv('HOME', ''), 'chrome')
+    bin_dir = os.path.join(chrome_dir, 'bin')
+    
     env_vars = {
-        'chrome_binary': os.getenv('CHROME_BIN', f"{chrome_dir}/chrome-linux/opt/google/chrome/chrome"),
-        'chromedriver_path': os.getenv('CHROMEDRIVER_PATH', f"{chrome_dir}/chromedriver"),
+        'chrome_binary': os.getenv('CHROME_BIN', os.path.join(chrome_dir, 'chrome-linux/opt/google/chrome/chrome')),
+        'chromedriver_path': os.getenv('CHROMEDRIVER_PATH', os.path.join(bin_dir, 'chromedriver')),
         'python_path': os.getenv('PYTHONPATH', '/opt/render/project/src'),
         'is_render': os.getenv('RENDER', 'false').lower() == 'true'
     }
     
-    # Add chromedriver directory to PATH
-    os.environ['PATH'] = f"{os.path.dirname(env_vars['chromedriver_path'])}:{os.environ.get('PATH', '')}"
+    # Ensure chromedriver directory is in PATH
+    os.environ['PATH'] = f"{bin_dir}:{os.environ.get('PATH', '')}"
+    
+    # Ensure LD_LIBRARY_PATH includes our SSL libraries
+    lib_dir = os.path.join(chrome_dir, 'lib')
+    os.environ['LD_LIBRARY_PATH'] = f"{lib_dir}:{os.environ.get('LD_LIBRARY_PATH', '')}"
     
     logging.info(f"Environment variables: {env_vars}")
     logging.info(f"PATH: {os.environ['PATH']}")
+    logging.info(f"LD_LIBRARY_PATH: {os.environ['LD_LIBRARY_PATH']}")
     return env_vars
 
 def scrape_forex_factory_calendar():
@@ -79,10 +86,15 @@ def scrape_forex_factory_calendar():
     logging.info(f"Current working directory: {os.getcwd()}")
     
     chrome_options = get_chrome_options(env_vars['chrome_binary'])
-    service = Service(executable_path=env_vars['chromedriver_path'])
-
+    
     try:
         logging.info(f"Using ChromeDriver at: {env_vars['chromedriver_path']}")
+        # Create Service object with log output
+        service = Service(
+            executable_path=env_vars['chromedriver_path'],
+            log_path='/tmp/chromedriver.log'
+        )
+        
         driver = webdriver.Chrome(service=service, options=chrome_options)
         logging.info("Chrome driver initialized successfully")
         
