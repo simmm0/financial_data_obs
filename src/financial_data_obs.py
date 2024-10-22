@@ -56,7 +56,7 @@ def get_chrome_options(chrome_binary):
 
 def get_env_vars():
     """Get environment variables with proper checks"""
-    chrome_dir = os.path.join(os.getenv('HOME', ''), '.chrome')
+    chrome_dir = "/opt/render/project/.chrome"  # Use absolute path
     
     env_vars = {
         'chrome_binary': os.getenv('CHROME_BIN', os.path.join(chrome_dir, 'chrome-linux/opt/google/chrome/chrome')),
@@ -65,12 +65,21 @@ def get_env_vars():
         'is_render': os.getenv('RENDER', 'false').lower() == 'true'
     }
     
-    # Ensure directories exist
-    os.makedirs(chrome_dir, exist_ok=True)
+    # Print debug information
+    logging.info(f"Current directory: {os.getcwd()}")
+    logging.info(f"Directory exists check - Chrome dir: {os.path.exists(chrome_dir)}")
+    logging.info(f"Directory exists check - ChromeDriver: {os.path.exists(env_vars['chromedriver_path'])}")
     
     # Check if ChromeDriver exists and is executable
     if not os.path.exists(env_vars['chromedriver_path']):
         logging.error(f"ChromeDriver not found at {env_vars['chromedriver_path']}")
+        # List parent directory contents
+        parent_dir = os.path.dirname(env_vars['chromedriver_path'])
+        try:
+            logging.info(f"Contents of {parent_dir}:")
+            logging.info(os.listdir(parent_dir))
+        except Exception as e:
+            logging.error(f"Could not list parent directory: {e}")
     else:
         logging.info(f"ChromeDriver found at {env_vars['chromedriver_path']}")
         if not os.access(env_vars['chromedriver_path'], os.X_OK):
@@ -90,12 +99,6 @@ def get_env_vars():
     logging.info(f"Environment variables: {env_vars}")
     logging.info(f"PATH: {os.environ['PATH']}")
     logging.info(f"LD_LIBRARY_PATH: {os.environ['LD_LIBRARY_PATH']}")
-    
-    # Directory contents for debugging
-    try:
-        logging.info(f"Chrome directory contents: {os.listdir(chrome_dir)}")
-    except Exception as e:
-        logging.error(f"Could not list chrome directory: {e}")
     
     return env_vars
 

@@ -6,12 +6,15 @@ echo "Starting build process..."
 echo "HOME directory is: $HOME"
 echo "Current user: $(whoami)"
 echo "Current directory: $PWD"
+echo "Contents of /opt/render:"
+ls -la /opt/render
 
 # Save the project root
 PROJECT_ROOT=$PWD
 
-# Create chrome directory structure in HOME
-CHROME_DIR="$HOME/.chrome"
+# Use an absolute path that should be writable
+CHROME_DIR="/opt/render/project/.chrome"
+echo "Creating Chrome directory at: $CHROME_DIR"
 mkdir -p $CHROME_DIR
 cd $CHROME_DIR
 
@@ -41,27 +44,29 @@ rm google-chrome-stable_current_amd64.deb
 
 # Download and set up ChromeDriver
 echo "Setting up ChromeDriver..."
-CHROMEDRIVER_PATH="$CHROME_DIR/chromedriver"
 wget -q "https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip"
 unzip -q chromedriver_linux64.zip
 chmod +x chromedriver
-# Instead of moving, just set the correct path
 CHROMEDRIVER_PATH="$CHROME_DIR/chromedriver"
+mv chromedriver $CHROMEDRIVER_PATH || true
 rm chromedriver_linux64.zip
 
 # Set directory permissions
 chmod -R 755 $CHROME_DIR
 
-# Verify installations and permissions
+# Verify installations and print debug info
 echo "Verifying installations..."
-echo "Chrome directory contents:"
-ls -la $CHROME_DIR
+echo "Chrome directory structure:"
+ls -R $CHROME_DIR
+
 echo "Chrome binary:"
 ls -la $CHROME_BIN || echo "Chrome binary not found!"
+
 echo "ChromeDriver:"
 ls -la $CHROMEDRIVER_PATH || echo "ChromeDriver not found!"
+
 echo "SSL libraries:"
-ls -la $CHROME_DIR/lib/libssl.so.1.1 || echo "SSL library not found!"
+ls -la $CHROME_DIR/lib/ || echo "SSL libraries not found!"
 
 # Create environment variables file
 cat << EOF > $PROJECT_ROOT/set_env.sh
@@ -75,7 +80,7 @@ export CHROME_FLAGS="--no-sandbox --headless --disable-gpu --disable-dev-shm-usa
 EOF
 chmod +x $PROJECT_ROOT/set_env.sh
 
-# Create a .env file for the application
+# Create .env file with the same variables
 cat << EOF > $PROJECT_ROOT/.env
 CHROME_BIN=$CHROME_BIN
 CHROMEDRIVER_PATH=$CHROMEDRIVER_PATH
@@ -95,4 +100,12 @@ else
 fi
 
 cd $PROJECT_ROOT
+
+# Final verification
+echo "Final directory contents:"
+echo "Project root:"
+ls -la $PROJECT_ROOT
+echo "Chrome directory:"
+ls -la $CHROME_DIR
+
 echo "Build process complete."
