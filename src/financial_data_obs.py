@@ -31,16 +31,21 @@ def scrape_forex_factory_calendar():
     chrome_options.add_argument("--window-size=1920x1080")
     chrome_options.add_argument("--disable-extensions")
     chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-    chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
+    chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.90 Safari/537.36')
 
     if "RENDER" in os.environ:
         chrome_binary = os.getenv('CHROME_BIN', '/usr/bin/google-chrome')
+        chromedriver_path = os.getenv('CHROMEDRIVER_PATH', '/usr/local/bin/chromedriver')
         logging.info(f"Using Chrome binary: {chrome_binary}")
+        logging.info(f"Using ChromeDriver path: {chromedriver_path}")
         chrome_options.binary_location = chrome_binary
+        service = Service(executable_path=chromedriver_path)
+    else:
+        service = Service(executable_path="chromedriver")
 
     try:
         logging.info("Initializing Chrome driver")
-        driver = webdriver.Chrome(options=chrome_options)
+        driver = webdriver.Chrome(service=service, options=chrome_options)
         logging.info("Chrome driver initialized successfully")
         
         driver.implicitly_wait(10)
@@ -123,7 +128,6 @@ def scrape_forex_factory_calendar():
                 continue
 
         logging.info(f"Total events scraped: {len(events)}")
-        # Log first few events if any found
         if events:
             logging.info(f"Sample events: {events[:2]}")
         
