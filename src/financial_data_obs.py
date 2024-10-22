@@ -32,7 +32,7 @@ def scrape_forex_factory_calendar():
     try:
         if "RENDER" in os.environ:
             # Running on Render
-            chrome_options.binary_location = "/usr/bin/chromium-browser"
+            chrome_options.binary_location = "/usr/bin/chromium"
             service = Service("/usr/bin/chromedriver")
         else:
             # Running locally

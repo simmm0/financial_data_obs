@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Economic Calendar</title>
+    <title>Sumo Calendar</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
@@ -99,44 +99,54 @@
 </head>
 <body>
     <div class="container">
-        <h1>Economic Calendar</h1>
-        <div id="calendar-data">Loading...</div>
+        <h1>Sumo Calendar</h1>
+        <table id="calendar-table">
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Currency</th>
+                <th>Event</th>
+            </tr>
+        </table>
         <div id="timer">Next update in <span id="time">05:00</span></div>
         <p class="last-updated">Last updated: <span id="update-time"></span></p>
     </div>
 
     <script>
-        // Fetch data from the Flask app's /api/calendar endpoint
         function fetchCalendarData() {
             fetch('/api/calendar')
-                .then(response => response.json())  // Parse the response as JSON
+                .then(response => response.json())
                 .then(data => {
-                    // Assuming the data is a list of events, format it into HTML
-                    let calendarHTML = '<ul>';
+                    const table = document.getElementById('calendar-table');
+                    // Keep the header row
+                    while (table.rows.length > 1) {
+                        table.deleteRow(1);
+                    }
+
                     data.forEach(event => {
-                        calendarHTML += `
-                            <li>
-                                <strong>${event.date}</strong>: 
-                                ${event.event} (${event.impact})
-                            </li>
-                        `;
+                        const row = table.insertRow();
+                        row.insertCell(0).textContent = event.date;
+                        const timeCell = row.insertCell(1);
+                        timeCell.textContent = event.time;
+                        timeCell.className = 'time-cell';
+                        const currencyCell = row.insertCell(2);
+                        currencyCell.textContent = event.currency;
+                        currencyCell.className = 'currency-cell';
+                        row.insertCell(3).textContent = event.event;
                     });
-                    calendarHTML += '</ul>';
 
-                    // Insert the formatted calendar data into the page
-                    document.getElementById('calendar-data').innerHTML = calendarHTML;
-
-                    // Update the last updated time
-                    document.getElementById('update-time').textContent = new Date().toLocaleString();
+                    document.getElementById('update-time').textContent = 
+                        new Date().toLocaleString();
                 })
                 .catch(error => {
                     console.error('Error fetching calendar data:', error);
-                    document.getElementById('calendar-data').innerHTML = 'Error loading data.';
+                    const table = document.getElementById('calendar-table');
+                    const row = table.insertRow();
+                    const cell = row.insertCell(0);
+                    cell.colSpan = 4;
+                    cell.textContent = 'Error loading data. Please try again later.';
                 });
         }
-
-        // Call the function to fetch data when the page loads
-        fetchCalendarData();
 
         function startTimer(duration, display) {
             var timer = duration, minutes, seconds;
