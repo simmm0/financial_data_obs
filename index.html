@@ -101,12 +101,17 @@
     <div class="container">
         <h1>Sumo Calendar</h1>
         <table id="calendar-table">
-            <tr>
-                <th>Date</th>
-                <th>Time</th>
-                <th>Currency</th>
-                <th>Event</th>
-            </tr>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Currency</th>
+                    <th>Event</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Data will be populated here -->
+            </tbody>
         </table>
         <div id="timer">Next update in <span id="time">05:00</span></div>
         <p class="last-updated">Last updated: <span id="update-time"></span></p>
@@ -114,25 +119,35 @@
 
     <script>
         function fetchCalendarData() {
-            fetch('/api/calendar')
+            const apiUrl = window.location.origin + '/api/calendar';
+            fetch(apiUrl)
                 .then(response => response.json())
                 .then(data => {
-                    const table = document.getElementById('calendar-table');
-                    // Keep the header row
-                    while (table.rows.length > 1) {
-                        table.deleteRow(1);
-                    }
+                    const tbody = document.querySelector('#calendar-table tbody');
+                    tbody.innerHTML = '';
 
                     data.forEach(event => {
-                        const row = table.insertRow();
-                        row.insertCell(0).textContent = event.date;
-                        const timeCell = row.insertCell(1);
+                        const row = document.createElement('tr');
+                        
+                        const dateCell = document.createElement('td');
+                        dateCell.textContent = event.date;
+                        row.appendChild(dateCell);
+                        
+                        const timeCell = document.createElement('td');
                         timeCell.textContent = event.time;
                         timeCell.className = 'time-cell';
-                        const currencyCell = row.insertCell(2);
+                        row.appendChild(timeCell);
+                        
+                        const currencyCell = document.createElement('td');
                         currencyCell.textContent = event.currency;
                         currencyCell.className = 'currency-cell';
-                        row.insertCell(3).textContent = event.event;
+                        row.appendChild(currencyCell);
+                        
+                        const eventCell = document.createElement('td');
+                        eventCell.textContent = event.event;
+                        row.appendChild(eventCell);
+                        
+                        tbody.appendChild(row);
                     });
 
                     document.getElementById('update-time').textContent = 
@@ -140,27 +155,26 @@
                 })
                 .catch(error => {
                     console.error('Error fetching calendar data:', error);
-                    const table = document.getElementById('calendar-table');
-                    const row = table.insertRow();
-                    const cell = row.insertCell(0);
-                    cell.colSpan = 4;
-                    cell.textContent = 'Error loading data. Please try again later.';
+                    const tbody = document.querySelector('#calendar-table tbody');
+                    tbody.innerHTML = '<tr><td colspan="4">Error loading data. Please try again later.</td></tr>';
                 });
         }
 
+        let timer;
         function startTimer(duration, display) {
-            var timer = duration, minutes, seconds;
-            setInterval(function () {
-                minutes = parseInt(timer / 60, 10);
-                seconds = parseInt(timer % 60, 10);
+            if (timer) clearInterval(timer);
+            
+            let timeLeft = duration;
+            timer = setInterval(function () {
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
 
-                minutes = minutes < 10 ? "0" + minutes : minutes;
-                seconds = seconds < 10 ? "0" + seconds : seconds;
+                display.textContent = 
+                    (minutes < 10 ? "0" + minutes : minutes) + ":" +
+                    (seconds < 10 ? "0" + seconds : seconds);
 
-                display.textContent = minutes + ":" + seconds;
-
-                if (--timer < 0) {
-                    timer = duration;
+                if (--timeLeft < 0) {
+                    timeLeft = duration;
                     fetchCalendarData();
                 }
             }, 1000);
@@ -168,9 +182,7 @@
 
         window.onload = function () {
             fetchCalendarData();
-            var fiveMinutes = 60 * 5,
-                display = document.querySelector('#time');
-            startTimer(fiveMinutes, display);
+            startTimer(300, document.querySelector('#time'));
         };
     </script>
 </body>

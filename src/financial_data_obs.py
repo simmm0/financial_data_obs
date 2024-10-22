@@ -10,12 +10,14 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import time
 import logging
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, jsonify, send_from_directory
+from flask_cors import CORS
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 def scrape_forex_factory_calendar():
     url = "https://www.forexfactory.com/calendar"
@@ -124,147 +126,14 @@ def scrape_forex_factory_calendar():
             driver.quit()
         return []
 
+@app.route('/api/calendar')
+def get_calendar():
+    calendar = scrape_forex_factory_calendar()
+    return jsonify(calendar)
+
 @app.route('/')
-def index():
-    try:
-        logging.info("Starting to fetch data")
-        calendar = scrape_forex_factory_calendar()
-        logging.info(f"Fetched {len(calendar)} calendar events")
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        logging.info("Finished fetching data")
-        
-        html = """
-        <html>
-        <head>
-            <title>Sumo Calendar</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                body { 
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    background-color: #f0f4f8;
-                    color: #1e3a5f;
-                    margin: 0; 
-                    padding: 10px;
-                    font-size: 13px;
-                }
-                .container { 
-                    max-width: 800px; 
-                    margin: 0 auto;
-                    background: #f0f4f8;
-                    padding: 15px;
-                    border-radius: 10px;
-                    box-shadow: 8px 8px 16px #d1d9e6,
-                               -8px -8px 16px #ffffff;
-                }
-                h1 { 
-                    color: #1e3a5f;
-                    padding-bottom: 8px;
-                    margin: 0 0 10px 0;
-                    font-weight: 600;
-                    font-size: 18px;
-                }
-                table { 
-                    width: 100%; 
-                    border-collapse: separate;
-                    border-spacing: 0;
-                    margin-top: 10px;
-                    background: #f0f4f8;
-                    border-radius: 8px;
-                    box-shadow: inset 3px 3px 5px #d1d9e6,
-                               inset -3px -3px 5px #ffffff;
-                    padding: 8px;
-                }
-                th, td { 
-                    padding: 4px 8px;
-                    text-align: left;
-                    border-bottom: 1px solid #e0e5ec;
-                    font-size: 12px;
-                    line-height: 1.2;
-                }
-                th { 
-                    background-color: #f0f4f8;
-                    color: #1e3a5f;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                }
-                tr:last-child td {
-                    border-bottom: none;
-                }
-                tr:hover {
-                    background-color: rgba(33, 150, 243, 0.05);
-                }
-                .time-cell { 
-                    color: #666;
-                    width: 75px;
-                }
-                .currency-cell { 
-                    color: #2196f3;
-                    font-weight: 600;
-                    width: 60px;
-                }
-                td:first-child {
-                    width: 80px;
-                }
-                #timer { 
-                    font-size: 11px;
-                    margin-top: 8px;
-                    text-align: right;
-                    color: #666;
-                    background: #f0f4f8;
-                    padding: 4px 8px;
-                    border-radius: 5px;
-                    display: inline-block;
-                    float: right;
-                    box-shadow: 2px 2px 4px #d1d9e6,
-                               -2px -2px 4px #ffffff;
-                }
-                .last-updated { 
-                    color: #666;
-                    font-size: 10px;
-                    text-align: right;
-                    margin-top: 5px;
-                    clear: both;
-                }
-                tr:nth-child(even) { 
-                    background-color: rgba(240, 244, 248, 0.5);
-                }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>Sumo Calendar</h1>
-                <table>
-                    <tr>
-                        <th>Date</th>
-                        <th>Time</th>
-                        <th>Currency</th>
-                        <th>Event</th>
-                    </tr>
-                    {% for event in calendar %}
-                    <tr>
-                        <td>{{ event.date }}</td>
-                        <td class="time-cell">{{ event.time }}</td>
-                        <td class="currency-cell">{{ event.currency }}</td>
-                        <td>{{ event.event }}</td>
-                    </tr>
-                    {% endfor %}
-                </table>
-                {% if not calendar %}
-                <p>No upcoming events found.</p>
-                {% endif %}
-                <div id="timer">Next update in <span id="time">05:00</span></div>
-                <p class="last-updated">Last updated: {{ current_time }}</p>
-            </div>
-        </body>
-        </html>
-        """
-        return render_template_string(html, calendar=calendar, current_time=current_time)
-    except Exception as e:
-        logging.error(f"An error occurred in the index route: {str(e)}")
-        logging.error(traceback.format_exc())
-        return f"An error occurred: {str(e)}", 500
+def serve_index():
+    return send_from_directory('.', 'index.html')
 
 if __name__ == '__main__':
     try:
