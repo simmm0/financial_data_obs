@@ -29,6 +29,9 @@ def scrape_forex_factory_calendar():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
 
+    # Specify the path to Chromium
+    chrome_options.binary_location = "/usr/bin/chromium-browser"
+
     # Setup Chrome WebDriver using ChromeDriverManager
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     
