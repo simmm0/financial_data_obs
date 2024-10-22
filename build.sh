@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-
-# Update package list and install Chromium
+# Install Chrome and required dependencies
 apt-get update
-apt-get install -y chromium-browser
+apt-get install -y chromium-browser chromium-chromedriver
 
-# Set Chrome path for Selenium
-export CHROME_BIN=/usr/bin/chromium-browser
+# Install Python requirements
+pip install -r requirements.txt

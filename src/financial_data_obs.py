@@ -1,4 +1,5 @@
 import sys
+import os
 import traceback
 import requests
 from selenium import webdriver
@@ -18,37 +19,41 @@ app = Flask(__name__)
 
 def scrape_forex_factory_calendar():
     url = "https://www.forexfactory.com/calendar"
-    # headers = {
-    #    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-    #    'Accept-Language': 'en-US,en;q=0.9',
-    #}
     
-    # Setup headless Chrome
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--remote-debugging-port=9222")
+    chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+    chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
 
-    # Specify the path to Chromium
-    chrome_options.binary_location = "/usr/bin/chromium-browser"
-
-    # Setup Chrome WebDriver using ChromeDriverManager
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-    
     try:
+        if "RENDER" in os.environ:
+            # Running on Render
+            chrome_options.binary_location = "/usr/bin/chromium-browser"
+            service = Service("/usr/bin/chromedriver")
+        else:
+            # Running locally
+            service = Service(ChromeDriverManager().install())
+
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        
         logging.info(f"Fetching data from {url}")
         driver.get(url)
-
-        # Wait for the page to load (adjust time if needed)
-        driver.implicitly_wait(10)
+        time.sleep(5)  # Wait for JavaScript to load
         
-        # Use BeautifulSoup to parse the page source
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
+        # Get the page source after JavaScript has loaded
+        page_source = driver.page_source
+        
+        # Close the browser
+        driver.quit()
+        
+        # Parse with BeautifulSoup
+        soup = BeautifulSoup(page_source, 'html.parser')
         logging.info(f"BeautifulSoup object created")
         
-        # Close the Selenium driver
-        driver.quit()
-
         # Parse the calendar table
         calendar_table = soup.find('table', class_='calendar__table')
         if not calendar_table:
@@ -105,7 +110,8 @@ def scrape_forex_factory_calendar():
     except Exception as e:
         logging.error(f"Error scraping calendar: {str(e)}")
         logging.error(traceback.format_exc())
-        driver.quit()
+        if 'driver' in locals():
+            driver.quit()
         return []
 
 @app.route('/')
