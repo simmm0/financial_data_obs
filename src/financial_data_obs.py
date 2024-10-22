@@ -56,26 +56,44 @@ def get_chrome_options(chrome_binary):
 
 def get_env_vars():
     """Get environment variables with proper checks"""
-    chrome_dir = os.path.join(os.getenv('HOME', ''), 'chrome')
-    bin_dir = os.path.join(chrome_dir, 'bin')
+    chrome_dir = "/opt/render/chrome"  # Use absolute path
     
     env_vars = {
         'chrome_binary': os.getenv('CHROME_BIN', os.path.join(chrome_dir, 'chrome-linux/opt/google/chrome/chrome')),
-        'chromedriver_path': os.getenv('CHROMEDRIVER_PATH', os.path.join(bin_dir, 'chromedriver')),
+        'chromedriver_path': os.getenv('CHROMEDRIVER_PATH', os.path.join(chrome_dir, 'chromedriver')),
         'python_path': os.getenv('PYTHONPATH', '/opt/render/project/src'),
         'is_render': os.getenv('RENDER', 'false').lower() == 'true'
     }
     
-    # Ensure chromedriver directory is in PATH
-    os.environ['PATH'] = f"{bin_dir}:{os.environ.get('PATH', '')}"
+    # Check if ChromeDriver exists and is executable
+    if not os.path.exists(env_vars['chromedriver_path']):
+        logging.error(f"ChromeDriver not found at {env_vars['chromedriver_path']}")
+    else:
+        logging.info(f"ChromeDriver found at {env_vars['chromedriver_path']}")
+        if not os.access(env_vars['chromedriver_path'], os.X_OK):
+            logging.error("ChromeDriver is not executable")
+            try:
+                os.chmod(env_vars['chromedriver_path'], 0o755)
+                logging.info("Fixed ChromeDriver permissions")
+            except Exception as e:
+                logging.error(f"Failed to fix ChromeDriver permissions: {e}")
     
-    # Ensure LD_LIBRARY_PATH includes our SSL libraries
-    lib_dir = os.path.join(chrome_dir, 'lib')
-    os.environ['LD_LIBRARY_PATH'] = f"{lib_dir}:{os.environ.get('LD_LIBRARY_PATH', '')}"
+    # Add chrome directory to PATH
+    os.environ['PATH'] = f"{chrome_dir}:{os.environ.get('PATH', '')}"
+    
+    # Add lib directory to LD_LIBRARY_PATH
+    os.environ['LD_LIBRARY_PATH'] = f"{os.path.join(chrome_dir, 'lib')}:{os.environ.get('LD_LIBRARY_PATH', '')}"
     
     logging.info(f"Environment variables: {env_vars}")
     logging.info(f"PATH: {os.environ['PATH']}")
     logging.info(f"LD_LIBRARY_PATH: {os.environ['LD_LIBRARY_PATH']}")
+    
+    # Directory contents for debugging
+    try:
+        logging.info(f"Chrome directory contents: {os.listdir(chrome_dir)}")
+    except Exception as e:
+        logging.error(f"Could not list chrome directory: {e}")
+    
     return env_vars
 
 def scrape_forex_factory_calendar():
