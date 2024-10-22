@@ -56,7 +56,7 @@ def get_chrome_options(chrome_binary):
 
 def get_env_vars():
     """Get environment variables with proper checks"""
-    chrome_dir = "/opt/render/chrome"  # Use absolute path
+    chrome_dir = os.path.join(os.getenv('HOME', ''), '.chrome')
     
     env_vars = {
         'chrome_binary': os.getenv('CHROME_BIN', os.path.join(chrome_dir, 'chrome-linux/opt/google/chrome/chrome')),
@@ -64,6 +64,9 @@ def get_env_vars():
         'python_path': os.getenv('PYTHONPATH', '/opt/render/project/src'),
         'is_render': os.getenv('RENDER', 'false').lower() == 'true'
     }
+    
+    # Ensure directories exist
+    os.makedirs(chrome_dir, exist_ok=True)
     
     # Check if ChromeDriver exists and is executable
     if not os.path.exists(env_vars['chromedriver_path']):
