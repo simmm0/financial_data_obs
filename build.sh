@@ -25,7 +25,7 @@ ls -R
 
 # Copy Chrome binary to final location (corrected path)
 echo "Setting up Chrome..."
-cp -v ./usr/bin/google-chrome-stable ./google-chrome
+cp -v ./opt/google/chrome/chrome ./google-chrome
 chmod +x ./google-chrome
 
 # Download and set up ChromeDriver
@@ -36,7 +36,7 @@ unzip -q chromedriver_linux64.zip
 chmod +x chromedriver
 
 # Clean up
-rm -rf usr
+rm -rf usr opt etc
 rm google-chrome-stable_current_amd64.deb
 rm chromedriver_linux64.zip
 
@@ -59,6 +59,9 @@ ls -l $CHROMEDRIVER_PATH || echo "ChromeDriver not found"
 echo "Testing Chrome and ChromeDriver..."
 $CHROME_BIN --version || echo "Failed to get Chrome version"
 $CHROMEDRIVER_PATH --version || echo "Failed to get ChromeDriver version"
+
+echo "Final directory contents:"
+ls -la $CHROME_DIR
 
 echo "Environment variables:"
 echo "CHROME_BIN=$CHROME_BIN"
