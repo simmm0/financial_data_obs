@@ -9,71 +9,57 @@ echo "Current directory: $PWD"
 # Save the project root
 PROJECT_ROOT=$PWD
 
-# Create chrome directory in project folder
-CHROME_DIR="/opt/render/project/chrome"
+# Create chrome directory in user's home directory instead of /opt
+CHROME_DIR="$HOME/chrome"
 mkdir -p $CHROME_DIR
 cd $CHROME_DIR
 
-# Install required dependencies
-apt-get update
-apt-get install -y wget unzip fonts-liberation libasound2 libatk-bridge2.0-0 \
-    libatk1.0-0 libatspi2.0-0 libcairo2 libcups2 libdbus-1-3 libdrm2 \
-    libgbm1 libgdk-pixbuf2.0-0 libgtk-3-0 libnspr4 libnss3 \
-    libpango-1.0-0 libpangocairo-1.0-0 libx11-6 libx11-xcb1 \
-    libxcb-dri3-0 libxcb1 libxcomposite1 libxcursor1 libxdamage1 \
-    libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 \
-    xdg-utils libglib2.0-0 libnvidia-egl-wayland1
+echo "Installing Python requirements first..."
+pip install -r $PROJECT_ROOT/requirements.txt
 
-# Download and set up Chrome
+# Download Chrome binary directly from Google
 echo "Downloading Chrome..."
-wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-dpkg -x google-chrome-stable_current_amd64.deb .
+wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+mkdir -p chrome-linux
+dpkg -x google-chrome-stable_current_amd64.deb chrome-linux/
 
-# Copy Chrome binary to final location
+# Set up Chrome
 echo "Setting up Chrome..."
-cp -v ./opt/google/chrome/chrome ./google-chrome
-chmod +x ./google-chrome
+CHROME_BIN="$CHROME_DIR/chrome-linux/opt/google/chrome/chrome"
+chmod +x $CHROME_BIN
 
-# Set up required directories
-mkdir -p /tmp/.X11-unix
-mkdir -p /tmp/.com.google.Chrome.{cjpalhdlnbpafiamejdnhcphjbkeiagm,eemcgdkfndhakfknompkggombfjjjeno}
-
-# Download and set up ChromeDriver
+# Download ChromeDriver
 echo "Downloading ChromeDriver..."
-CHROME_VERSION="114"
-wget -q "https://chromedriver.storage.googleapis.com/${CHROME_VERSION}.0.5735.90/chromedriver_linux64.zip"
+CHROME_VERSION=$(${CHROME_BIN} --version | cut -d ' ' -f 3 | cut -d '.' -f 1)
+CHROMEDRIVER_VERSION=$(wget -qO- https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION})
+wget -q "https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip"
 unzip -q chromedriver_linux64.zip
 chmod +x chromedriver
+CHROMEDRIVER_PATH="$CHROME_DIR/chromedriver"
 
-# Clean up
-rm -rf usr opt etc
-rm google-chrome-stable_current_amd64.deb
-rm chromedriver_linux64.zip
+# Clean up downloaded files
+rm google-chrome-stable_current_amd64.deb chromedriver_linux64.zip
 
-# Set up environment variables
-export CHROME_BIN="$CHROME_DIR/google-chrome"
-export CHROMEDRIVER_PATH="$CHROME_DIR/chromedriver"
+# Create required directories
+mkdir -p $HOME/.chrome-user-data
 
-# Create a chrome-user-data directory
-mkdir -p "$CHROME_DIR/chrome-user-data"
+# Export environment variables
+export CHROME_BIN
+export CHROMEDRIVER_PATH
 
-# Return to project directory for requirements installation
-cd $PROJECT_ROOT
-echo "Installing Python requirements..."
-pip install -r requirements.txt
+# Create a script to set environment variables at runtime
+cat << EOF > $PROJECT_ROOT/set_env.sh
+export CHROME_BIN="$CHROME_BIN"
+export CHROMEDRIVER_PATH="$CHROMEDRIVER_PATH"
+export CHROME_USER_DATA_DIR="$HOME/.chrome-user-data"
+EOF
+chmod +x $PROJECT_ROOT/set_env.sh
 
 # Verify installations
 echo "Verifying installations..."
-echo "Chrome location:"
-ls -l $CHROME_BIN || echo "Chrome binary not found"
-echo "ChromeDriver location:"
-ls -l $CHROMEDRIVER_PATH || echo "ChromeDriver not found"
-
-echo "Final directory contents:"
-ls -la $CHROME_DIR
-
-echo "Environment variables:"
-echo "CHROME_BIN=$CHROME_BIN"
-echo "CHROMEDRIVER_PATH=$CHROMEDRIVER_PATH"
+echo "Chrome location: $CHROME_BIN"
+[ -f "$CHROME_BIN" ] && echo "Chrome binary found" || echo "Chrome binary not found"
+echo "ChromeDriver location: $CHROMEDRIVER_PATH"
+[ -f "$CHROMEDRIVER_PATH" ] && echo "ChromeDriver found" || echo "ChromeDriver not found"
 
 echo "Build process complete."
