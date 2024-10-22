@@ -19,8 +19,8 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 def get_env_vars():
     """Get environment variables with proper checks"""
     env_vars = {
-        'chrome_binary': os.getenv('CHROME_BIN', '/usr/bin/google-chrome'),
-        'chromedriver_path': os.getenv('CHROMEDRIVER_PATH', '/usr/bin/chromedriver'),
+        'chrome_binary': os.getenv('CHROME_BIN', '/opt/render/project/chrome/google-chrome'),
+        'chromedriver_path': os.getenv('CHROMEDRIVER_PATH', '/opt/render/project/chrome/chromedriver'),
         'python_path': os.getenv('PYTHONPATH', '/opt/render/project/src'),
         'is_render': os.getenv('RENDER', 'false').lower() == 'true'
     }
