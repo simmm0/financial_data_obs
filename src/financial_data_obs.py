@@ -4,7 +4,6 @@ import traceback
 import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
@@ -27,43 +26,25 @@ def scrape_forex_factory_calendar():
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument("--remote-debugging-port=9222")
     chrome_options.add_argument('--disable-blink-features=AutomationControlled')
     chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
 
     try:
-        if "RENDER" in os.environ:
-            logging.info("Checking Chromium and ChromeDriver installation:")
-            logging.info(f"Chromium exists: {os.path.exists('/tmp/chrome/chromium')}")
-            logging.info(f"ChromeDriver exists: {os.path.exists('/tmp/chrome/chromedriver')}")
-            
-            chrome_options.binary_location = "/tmp/chrome/chromium"
-            service = Service(executable_path="/tmp/chrome/chromedriver")
-            
-            # Log additional path information
-            logging.info(f"Chromium binary location: {chrome_options.binary_location}")
-            logging.info(f"ChromeDriver path: {service.path}")
-        else:
-            service = Service(ChromeDriverManager().install())
-
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-        driver.implicitly_wait(10)  # Add implicit wait
+        # Let Selenium handle driver management
+        logging.info("Initializing Chrome driver")
+        driver = webdriver.Chrome(options=chrome_options)
+        driver.implicitly_wait(10)
         
         logging.info(f"Fetching data from {url}")
         driver.get(url)
-        time.sleep(5)  # Wait for JavaScript to load
+        time.sleep(5)
         
-        # Get the page source after JavaScript has loaded
         page_source = driver.page_source
-        
-        # Close the browser
         driver.quit()
         
-        # Parse with BeautifulSoup
         soup = BeautifulSoup(page_source, 'html.parser')
-        logging.info(f"BeautifulSoup object created")
+        logging.info("BeautifulSoup object created")
         
-        # Parse the calendar table
         calendar_table = soup.find('table', class_='calendar__table')
         if not calendar_table:
             logging.error("Calendar table not found")
@@ -77,14 +58,11 @@ def scrape_forex_factory_calendar():
 
         for row in rows:
             try:
-                # Try to find the date in this row
                 date_elem = row.find('td', class_='date') or row.find('td', class_='calendar__date')
-                
                 if date_elem and date_elem.text.strip():
                     current_date = date_elem.text.strip()
                     logging.info(f"Found new date: {current_date}")
 
-                # Get time and event details
                 time_elem = row.find(['td', 'time'], class_=['calendar__time', 'time'])
                 currency_elem = row.find(['td', 'currency'], class_=['calendar__currency', 'currency'])
                 event_elem = row.find(['td', 'event'], class_=['calendar__event', 'event'])
@@ -94,7 +72,6 @@ def scrape_forex_factory_calendar():
                     currency = currency_elem.text.strip().upper()
                     event = event_elem.text.strip()
 
-                    # Filter USD and ALL events
                     if currency not in ["USD", "ALL"]:
                         continue
                     
