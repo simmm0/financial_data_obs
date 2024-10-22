@@ -5,6 +5,9 @@ import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import time
@@ -29,15 +32,28 @@ def scrape_forex_factory_calendar():
     chrome_options.add_argument('--disable-blink-features=AutomationControlled')
     chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
 
+    if "RENDER" in os.environ:
+        chrome_binary = os.getenv('CHROME_BIN', '/usr/bin/chromium')
+        logging.info(f"Using Chrome binary: {chrome_binary}")
+        chrome_options.binary_location = chrome_binary
+
     try:
-        # Let Selenium handle driver management
         logging.info("Initializing Chrome driver")
         driver = webdriver.Chrome(options=chrome_options)
         driver.implicitly_wait(10)
         
         logging.info(f"Fetching data from {url}")
         driver.get(url)
-        time.sleep(5)
+        
+        # Wait for table to load
+        try:
+            wait = WebDriverWait(driver, 10)
+            calendar_table = wait.until(
+                EC.presence_of_element_located((By.CLASS_NAME, "calendar__table"))
+            )
+            logging.info("Calendar table found on page")
+        except Exception as e:
+            logging.error(f"Timeout waiting for calendar table: {e}")
         
         page_source = driver.page_source
         driver.quit()
