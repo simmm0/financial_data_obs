@@ -1,188 +1,211 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Economic Calendar</title>
+    <title>Sumo Calendar</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #1a1a1a;
-            color: #fff;
-            margin: 0;
-            padding: 20px;
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            color: #1e3a5f;
+            margin: 0; 
+            padding: 10px;
+            font-size: 13px;
         }
-
-        .container {
-            max-width: 800px;
+        .container { 
+            max-width: 800px; 
             margin: 0 auto;
+            background: #f0f4f8;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 8px 8px 16px #d1d9e6,
+                       -8px -8px 16px #ffffff;
         }
-
-        h1 {
-            color: #fff;
-            margin-bottom: 20px;
-            font-size: 24px;
+        h1 { 
+            color: #1e3a5f;
+            padding-bottom: 8px;
+            margin: 0 0 10px 0;
+            font-weight: 600;
+            font-size: 18px;
         }
-
-        .calendar-section {
-            margin-bottom: 30px;
+        table { 
+            width: 100%; 
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 10px;
+            background: #f0f4f8;
+            border-radius: 8px;
+            box-shadow: inset 3px 3px 5px #d1d9e6,
+                       inset -3px -3px 5px #ffffff;
+            padding: 8px;
         }
-
-        .day-header {
-            background: #333;
-            padding: 8px 15px;
-            margin-top: 20px;
-            border-radius: 4px;
-            font-weight: bold;
-            color: #fff;
-            font-size: 16px;
+        th, td { 
+            padding: 4px 8px;
+            text-align: left;
+            border-bottom: 1px solid #e0e5ec;
+            font-size: 12px;
+            line-height: 1.2;
         }
-
-        .event-row {
-            padding: 8px 15px;
-            border-left: 3px solid transparent;
-            margin: 4px 0;
-            display: flex;
-            align-items: center;
-            background: #2a2a2a;
+        th { 
+            background-color: #f0f4f8;
+            color: #1e3a5f;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-
-        .event-time {
-            width: 80px;
-            color: #888;
+        tr:last-child td {
+            border-bottom: none;
         }
-
-        .event-currency {
+        tr:hover {
+            background-color: rgba(33, 150, 243, 0.05);
+        }
+        .time-cell { 
+            color: #666;
+            width: 75px;
+        }
+        .currency-cell { 
+            color: #2196f3;
+            font-weight: 600;
             width: 60px;
-            color: #4CAF50;
-            font-weight: bold;
         }
-
-        .event-name {
-            flex-grow: 1;
-            padding-left: 15px;
+        td:first-child {
+            width: 80px;
         }
-
-        #timer {
-            color: #888;
-            font-size: 14px;
-            margin-top: 20px;
+        #timer { 
+            font-size: 11px;
+            margin-top: 8px;
+            text-align: right;
+            color: #666;
+            background: #f0f4f8;
+            padding: 4px 8px;
+            border-radius: 5px;
+            display: inline-block;
+            float: right;
+            box-shadow: 2px 2px 4px #d1d9e6,
+                       -2px -2px 4px #ffffff;
         }
-
-        #update-time {
-            color: #888;
-            font-size: 14px;
+        .last-updated { 
+            color: #666;
+            font-size: 10px;
+            text-align: right;
+            margin-top: 5px;
+            clear: both;
         }
-
-        #loading {
-            text-align: center;
-            padding: 20px;
-            color: #888;
-        }
-
-        #error {
-            color: #ff6b6b;
-            text-align: center;
-            padding: 20px;
+        tr:nth-child(even) { 
+            background-color: rgba(240, 244, 248, 0.5);
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Economic Calendar</h1>
-        <div id="calendar"></div>
+        <h1>Sumo Calendar</h1>
+        <table id="calendar-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Currency</th>
+                    <th>Event</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Data will be populated here -->
+            </tbody>
+        </table>
         <div id="timer">Next update in <span id="time">05:00</span></div>
-        <div>Last updated: <span id="update-time"></span></div>
+        <p class="last-updated">Last updated: <span id="update-time"></span></p>
     </div>
 
     <script>
-        function formatDateTime(date) {
-            return date.toLocaleString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-            });
-        }
-
-        function updateCalendar() {
-            const calendarDiv = document.getElementById('calendar');
-            calendarDiv.innerHTML = '<div id="loading">Loading calendar data...</div>';
-
-            fetch('/api/calendar')
-                .then(response => response.json())
+        function fetchCalendarData() {
+            // Use the absolute path to the API endpoint
+            fetch(window.location.origin + '/api/calendar')
+                .then(response => {
+                    console.log('API Response:', response.status);  // Debug logging
+                    return response.json();
+                })
                 .then(data => {
-                    if (data.error) {
-                        calendarDiv.innerHTML = `<div id="error">${data.message || 'Error loading data. Please try again later.'}</div>`;
-                        return;
-                    }
-
-                    // Group events by date
-                    const eventsByDate = {};
-                    data.forEach(event => {
-                        if (!eventsByDate[event.date]) {
-                            eventsByDate[event.date] = [];
-                        }
-                        eventsByDate[event.date].push(event);
-                    });
-
-                    // Clear and rebuild calendar
-                    calendarDiv.innerHTML = '';
-
-                    // Add events grouped by date
-                    Object.keys(eventsByDate).forEach(date => {
-                        // Add date header
-                        const dateSection = document.createElement('div');
-                        dateSection.className = 'calendar-section';
-                        dateSection.innerHTML = `<div class="day-header">${date}</div>`;
-                        
-                        // Add events for this date
-                        eventsByDate[date].forEach(event => {
-                            const eventDiv = document.createElement('div');
-                            eventDiv.className = 'event-row';
-                            eventDiv.innerHTML = `
-                                <span class="event-time">${event.time}</span>
-                                <span class="event-currency">${event.currency}</span>
-                                <span class="event-name">${event.event}</span>
-                            `;
-                            dateSection.appendChild(eventDiv);
+                    console.log('Calendar Data:', data);  // Debug logging
+                    const tbody = document.querySelector('#calendar-table tbody');
+                    tbody.innerHTML = '';
+    
+                    if (Array.isArray(data) && data.length > 0) {
+                        data.forEach(event => {
+                            const row = document.createElement('tr');
+                            
+                            const dateCell = document.createElement('td');
+                            dateCell.textContent = event.date;
+                            row.appendChild(dateCell);
+                            
+                            const timeCell = document.createElement('td');
+                            timeCell.textContent = event.time;
+                            timeCell.className = 'time-cell';
+                            row.appendChild(timeCell);
+                            
+                            const currencyCell = document.createElement('td');
+                            currencyCell.textContent = event.currency;
+                            currencyCell.className = 'currency-cell';
+                            row.appendChild(currencyCell);
+                            
+                            const eventCell = document.createElement('td');
+                            eventCell.textContent = event.event;
+                            row.appendChild(eventCell);
+                            
+                            tbody.appendChild(row);
                         });
-
-                        calendarDiv.appendChild(dateSection);
-                    });
-
-                    // Update the last updated time
-                    document.getElementById('update-time').textContent = formatDateTime(new Date());
+                    } else {
+                        const row = document.createElement('tr');
+                        const cell = document.createElement('td');
+                        cell.colSpan = 4;
+                        cell.textContent = 'No events found';
+                        row.appendChild(cell);
+                        tbody.appendChild(row);
+                    }
+    
+                    document.getElementById('update-time').textContent = 
+                        new Date().toLocaleString();
                 })
                 .catch(error => {
-                    calendarDiv.innerHTML = '<div id="error">Error loading data. Please try again later.</div>';
-                    console.error('Error:', error);
+                    console.error('Error fetching calendar data:', error);
+                    const tbody = document.querySelector('#calendar-table tbody');
+                    tbody.innerHTML = '';
+                    
+                    const row = document.createElement('tr');
+                    const cell = document.createElement('td');
+                    cell.colSpan = 4;
+                    cell.textContent = 'Error loading data. Please try again later.';
+                    row.appendChild(cell);
+                    tbody.appendChild(row);
                 });
         }
-
-        function updateTimer() {
-            const timeDisplay = document.getElementById('time');
-            let time = 300; // 5 minutes in seconds
-
-            function formatTime(seconds) {
-                const mins = Math.floor(seconds / 60);
-                const secs = seconds % 60;
-                return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-            }
-
-            function countdown() {
-                timeDisplay.textContent = formatTime(time);
-                if (time <= 0) {
-                    updateCalendar();
-                    time = 300;
-                } else {
-                    time--;
+    
+        let timer;
+        function startTimer(duration, display) {
+            if (timer) clearInterval(timer);
+            
+            let timeLeft = duration;
+            timer = setInterval(function () {
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+    
+                display.textContent = 
+                    (minutes < 10 ? "0" + minutes : minutes) + ":" +
+                    (seconds < 10 ? "0" + seconds : seconds);
+    
+                if (--timeLeft < 0) {
+                    timeLeft = duration;
+                    fetchCalendarData();
                 }
-            }
-
-            setInterval(countdown, 1000);
+            }, 1000);
         }
-
-        // Initial load
-        updateCalendar();
-        updateTimer();
+    
+        window.onload = function () {
+            console.log('Page loaded, fetching calendar data...');  // Debug logging
+            fetchCalendarData();
+            startTimer(300, document.querySelector('#time'));
+        };
     </script>
+
 </body>
 </html>
