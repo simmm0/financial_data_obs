@@ -6,15 +6,12 @@ echo "Starting build process..."
 echo "HOME directory is: $HOME"
 echo "Current user: $(whoami)"
 echo "Current directory: $PWD"
-echo "Contents of /opt/render:"
-ls -la /opt/render
 
 # Save the project root
 PROJECT_ROOT=$PWD
 
-# Use an absolute path that should be writable
-CHROME_DIR="/opt/render/project/.chrome"
-echo "Creating Chrome directory at: $CHROME_DIR"
+# Create chrome directory structure
+CHROME_DIR="$PROJECT_ROOT/.chrome"
 mkdir -p $CHROME_DIR
 cd $CHROME_DIR
 
@@ -42,14 +39,20 @@ CHROME_BIN="$CHROME_DIR/chrome-linux/opt/google/chrome/chrome"
 chmod +x $CHROME_BIN || true
 rm google-chrome-stable_current_amd64.deb
 
-# Download and set up ChromeDriver
+# Get Chrome version and download matching ChromeDriver
+echo "Getting Chrome version..."
+CHROME_VERSION=$($CHROME_BIN --version | cut -d ' ' -f 3 | cut -d '.' -f 1)
+echo "Chrome version: $CHROME_VERSION"
+
 echo "Setting up ChromeDriver..."
-wget -q "https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip"
-unzip -q chromedriver_linux64.zip
-chmod +x chromedriver
 CHROMEDRIVER_PATH="$CHROME_DIR/chromedriver"
-mv chromedriver $CHROMEDRIVER_PATH || true
-rm chromedriver_linux64.zip
+
+# Download latest ChromeDriver for Chrome 130
+wget -q "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/130.0.6723.69/linux64/chromedriver-linux64.zip"
+unzip -q chromedriver-linux64.zip
+chmod +x chromedriver-linux64/chromedriver
+mv chromedriver-linux64/chromedriver $CHROMEDRIVER_PATH
+rm -rf chromedriver-linux64 chromedriver-linux64.zip
 
 # Set directory permissions
 chmod -R 755 $CHROME_DIR
@@ -80,15 +83,6 @@ export CHROME_FLAGS="--no-sandbox --headless --disable-gpu --disable-dev-shm-usa
 EOF
 chmod +x $PROJECT_ROOT/set_env.sh
 
-# Create .env file with the same variables
-cat << EOF > $PROJECT_ROOT/.env
-CHROME_BIN=$CHROME_BIN
-CHROMEDRIVER_PATH=$CHROMEDRIVER_PATH
-LD_LIBRARY_PATH=$CHROME_DIR/lib
-PYTHONPATH=$PROJECT_ROOT
-RENDER=true
-EOF
-
 # Test ChromeDriver
 echo "Testing ChromeDriver..."
 if [ -x "$CHROMEDRIVER_PATH" ]; then
@@ -100,12 +94,4 @@ else
 fi
 
 cd $PROJECT_ROOT
-
-# Final verification
-echo "Final directory contents:"
-echo "Project root:"
-ls -la $PROJECT_ROOT
-echo "Chrome directory:"
-ls -la $CHROME_DIR
-
 echo "Build process complete."
