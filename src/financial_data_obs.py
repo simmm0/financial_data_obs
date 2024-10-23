@@ -109,20 +109,6 @@ def scrape_forex_factory_calendar():
     env_vars = get_env_vars()
     logging.info(f"Current working directory: {os.getcwd()}")
     
-    # Ensure the chromedriver exists and is executable
-    if not os.path.exists(env_vars['chromedriver_path']):
-        logging.error(f"ChromeDriver not found at {env_vars['chromedriver_path']}")
-        return []
-    
-    if not os.access(env_vars['chromedriver_path'], os.X_OK):
-        logging.error(f"ChromeDriver at {env_vars['chromedriver_path']} is not executable")
-        try:
-            os.chmod(env_vars['chromedriver_path'], 0o755)
-            logging.info("Fixed ChromeDriver permissions")
-        except Exception as e:
-            logging.error(f"Failed to fix ChromeDriver permissions: {e}")
-            return []
-    
     chrome_options = get_chrome_options(env_vars['chrome_binary'])
     
     try:
@@ -131,56 +117,62 @@ def scrape_forex_factory_calendar():
             executable_path=env_vars['chromedriver_path'],
             log_path='/tmp/chromedriver.log'
         )
-
-        # Create a new WebDriver instance without using Selenium Manager
-        os.environ['webdriver.chrome.driver'] = env_vars['chromedriver_path']
         
-        driver = webdriver.Chrome(
-            service=service,
-            options=chrome_options
-        )
-        
+        driver = webdriver.Chrome(service=service, options=chrome_options)
         logging.info("Chrome driver initialized successfully")
-        
-        # Test if the driver is working
-        logging.info("Testing driver with simple command...")
-        driver.get("about:blank")
-        logging.info("Driver test successful")
         
         driver.implicitly_wait(10)
         logging.info(f"Fetching data from {url}")
         
-        driver.get(url)
-        logging.info("Page loaded, waiting for content")
-        
-        # Wait for table to load
         try:
-            wait = WebDriverWait(driver, 10)
-            calendar_table = wait.until(
-                EC.presence_of_element_located((By.CLASS_NAME, "calendar__table"))
-            )
-            logging.info("Calendar table found on page")
+            driver.get(url)
+            logging.info("Page loaded successfully")
+            
+            # Add a longer wait for the calendar
+            wait = WebDriverWait(driver, 20)
+            
+            # Wait for either class name that might be present
+            try:
+                calendar_table = wait.until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, ".calendar__table, .calendar_table"))
+                )
+                logging.info("Calendar table found on page")
+            except Exception as e:
+                logging.error(f"Timeout waiting for calendar table: {e}")
+                # Log the page source to see what we're getting
+                logging.info(f"Page source preview: {driver.page_source[:1000]}")
+                return []
+            
+            # Get the page source after we know the table has loaded
+            page_source = driver.page_source
+            logging.info(f"Retrieved page source, length: {len(page_source)}")
+            
+            # Save page source for debugging
+            with open('/tmp/calendar_page.html', 'w', encoding='utf-8') as f:
+                f.write(page_source)
+            logging.info("Saved page source to /tmp/calendar_page.html")
+            
         except Exception as e:
-            logging.error(f"Timeout waiting for calendar table: {e}")
-            if driver.page_source:
-                logging.info(f"Page source preview: {driver.page_source[:500]}")
-        
-        page_source = driver.page_source
-        logging.info(f"Page source length: {len(page_source)}")
-        
-        driver.quit()
-        logging.info("Browser closed")
+            logging.error(f"Error during page load: {e}")
+            return []
+        finally:
+            driver.quit()
+            logging.info("Browser closed")
         
         soup = BeautifulSoup(page_source, 'html.parser')
-        logging.info("BeautifulSoup object created")
+        logging.info("Created BeautifulSoup object")
         
-        calendar_table = soup.find('table', class_='calendar__table')
+        # Try both possible class names for the calendar table
+        calendar_table = soup.find('table', class_=['calendar__table', 'calendar_table'])
         if not calendar_table:
             logging.error("Calendar table not found in parsed HTML")
-            logging.info(f"Page source sample: {page_source[:500]}...")
+            # Log what tables we do find
+            all_tables = soup.find_all('table')
+            logging.info(f"Found {len(all_tables)} tables on the page")
+            for i, table in enumerate(all_tables):
+                logging.info(f"Table {i} classes: {table.get('class', 'no class')}")
             return []
 
-        events = []
         rows = soup.select('tr.calendar_row, tr.calendar__row')
         logging.info(f"Found {len(rows)} calendar rows")
 
@@ -189,15 +181,18 @@ def scrape_forex_factory_calendar():
             logging.info(f"Total tr elements found: {len(all_rows)}")
             for i, row in enumerate(all_rows[:5]):
                 logging.info(f"Row {i} classes: {row.get('class', 'no class')}")
+                logging.info(f"Row {i} content: {row.text.strip()}")
 
+        events = []
         current_date = None
 
         for row in rows:
             try:
+                # Try both old and new class names for date
                 date_elem = row.find('td', class_='date') or row.find('td', class_='calendar__date')
                 if date_elem and date_elem.text.strip():
                     current_date = date_elem.text.strip()
-                    logging.info(f"Found new date: {current_date}")
+                    logging.info(f"Found date: {current_date}")
 
                 time_elem = row.find(['td', 'time'], class_=['calendar__time', 'time'])
                 currency_elem = row.find(['td', 'currency'], class_=['calendar__currency', 'currency'])
@@ -210,7 +205,7 @@ def scrape_forex_factory_calendar():
 
                     if currency not in ["USD", "ALL"]:
                         continue
-                    
+
                     event_data = {
                         "date": current_date if current_date else "",
                         "time": time_text if time_text else "All Day",
@@ -226,10 +221,12 @@ def scrape_forex_factory_calendar():
                 logging.error(traceback.format_exc())
                 continue
 
-        logging.info(f"Total events scraped: {len(events)}")
+        logging.info(f"Total events found: {len(events)}")
         if events:
-            logging.info(f"Sample events: {events[:2]}")
-        
+            logging.info(f"First few events: {events[:2]}")
+        else:
+            logging.warning("No events were found in the scraped data")
+            
         return events
 
     except Exception as e:
