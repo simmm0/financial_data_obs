@@ -123,16 +123,30 @@ def scrape_with_retry(url, max_retries=3, timeout=60):
                 driver.set_page_load_timeout(timeout)
                 logging.info("Chrome driver initialized successfully")
                 
-                # Load the page
+                # Load the initial page
                 driver.get(url)
-                logging.info("Page loaded successfully")
+                logging.info("Initial page loaded successfully")
                 
-                # Wait for calendar table with timeout
+                # Wait for the display settings button and click it
                 wait = WebDriverWait(driver, 30)
-                calendar_table = wait.until(
+                display_settings = wait.until(
+                    EC.element_to_be_clickable((By.CLASS_NAME, "calendar-filters__display"))
+                )
+                display_settings.click()
+                logging.info("Clicked display settings")
+                
+                # Wait for and click "View Entire Week" option
+                week_view = wait.until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "[data-filter-range='week']"))
+                )
+                week_view.click()
+                logging.info("Selected week view")
+                
+                # Wait for calendar table to update
+                wait.until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, ".calendar__table, .calendar_table"))
                 )
-                logging.info("Calendar table found")
+                logging.info("Calendar table found after selecting week view")
                 
                 # Get page source
                 page_source = driver.page_source
@@ -143,6 +157,8 @@ def scrape_with_retry(url, max_retries=3, timeout=60):
             except Exception as e:
                 last_exception = e
                 logging.error(f"Error during attempt {attempt + 1}: {str(e)}")
+                if driver:
+                    logging.error(f"Page source at error: {driver.page_source[:1000]}")
                 continue
             finally:
                 if driver:
@@ -179,7 +195,7 @@ def scrape_forex_factory_calendar():
                 logging.info(f"Table {i} classes: {table.get('class', 'no class')}")
             return []
 
-        rows = soup.select('tr.calendar_row, tr.calendar__row')
+        rows = soup.select('tr.calendar_row, tr.calendar__row, tr.calendar__row--new-day')
         logging.info(f"Found {len(rows)} calendar rows")
 
         if len(rows) == 0:
@@ -194,14 +210,21 @@ def scrape_forex_factory_calendar():
 
         for row in rows:
             try:
-                date_elem = row.find('td', class_='date') or row.find('td', class_='calendar__date')
+                # Check for date in multiple possible class names
+                date_elem = (
+                    row.find('td', class_='date') or 
+                    row.find('td', class_='calendar__date') or 
+                    row.find('td', class_='calendar-date')
+                )
+                
                 if date_elem and date_elem.text.strip():
                     current_date = date_elem.text.strip()
                     logging.info(f"Found date: {current_date}")
 
-                time_elem = row.find(['td', 'time'], class_=['calendar__time', 'time'])
-                currency_elem = row.find(['td', 'currency'], class_=['calendar__currency', 'currency'])
-                event_elem = row.find(['td', 'event'], class_=['calendar__event', 'event'])
+                # Look for time and event details with multiple possible class names
+                time_elem = row.find(['td', 'time'], class_=['calendar__time', 'time', 'calendar-time'])
+                currency_elem = row.find(['td', 'currency'], class_=['calendar__currency', 'currency', 'calendar-currency'])
+                event_elem = row.find(['td', 'event'], class_=['calendar__event', 'event', 'calendar-event'])
 
                 if all([time_elem, currency_elem, event_elem]):
                     time_text = time_elem.text.strip()
