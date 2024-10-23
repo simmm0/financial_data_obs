@@ -57,21 +57,7 @@ rm -rf chromedriver-linux64 chromedriver-linux64.zip
 # Set directory permissions
 chmod -R 755 $CHROME_DIR
 
-# Verify installations and print debug info
-echo "Verifying installations..."
-echo "Chrome directory structure:"
-ls -R $CHROME_DIR
-
-echo "Chrome binary:"
-ls -la $CHROME_BIN || echo "Chrome binary not found!"
-
-echo "ChromeDriver:"
-ls -la $CHROMEDRIVER_PATH || echo "ChromeDriver not found!"
-
-echo "SSL libraries:"
-ls -la $CHROME_DIR/lib/ || echo "SSL libraries not found!"
-
-# Create environment variables file
+# Create environment variables file with Gunicorn configuration
 cat << EOF > $PROJECT_ROOT/set_env.sh
 #!/usr/bin/env bash
 export CHROME_BIN="$CHROME_BIN"
@@ -80,6 +66,9 @@ export PATH="$CHROME_DIR:\$PATH"
 export LD_LIBRARY_PATH="$CHROME_DIR/lib:\$LD_LIBRARY_PATH"
 export PYTHONPATH="$PROJECT_ROOT"
 export CHROME_FLAGS="--no-sandbox --headless --disable-gpu --disable-dev-shm-usage --disable-software-rasterizer --remote-debugging-port=9222 --disable-features=VizDisplayCompositor"
+
+# Start Gunicorn with increased timeout
+exec gunicorn --timeout 300 --workers 2 app:app
 EOF
 chmod +x $PROJECT_ROOT/set_env.sh
 

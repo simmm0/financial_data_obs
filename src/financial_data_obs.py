@@ -102,63 +102,70 @@ def get_env_vars():
     
     return env_vars
 
+def scrape_with_retry(url, max_retries=3, timeout=60):
+    """Attempt to scrape with retries and better error handling"""
+    last_exception = None
+    
+    for attempt in range(max_retries):
+        try:
+            logging.info(f"Scraping attempt {attempt + 1} of {max_retries}")
+            
+            driver = None
+            try:
+                env_vars = get_env_vars()
+                chrome_options = get_chrome_options(env_vars['chrome_binary'])
+                service = Service(
+                    executable_path=env_vars['chromedriver_path'],
+                    log_path='/tmp/chromedriver.log'
+                )
+                
+                driver = webdriver.Chrome(service=service, options=chrome_options)
+                driver.set_page_load_timeout(timeout)
+                logging.info("Chrome driver initialized successfully")
+                
+                # Load the page
+                driver.get(url)
+                logging.info("Page loaded successfully")
+                
+                # Wait for calendar table with timeout
+                wait = WebDriverWait(driver, 30)
+                calendar_table = wait.until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, ".calendar__table, .calendar_table"))
+                )
+                logging.info("Calendar table found")
+                
+                # Get page source
+                page_source = driver.page_source
+                logging.info(f"Retrieved page source, length: {len(page_source)}")
+                
+                return page_source
+                
+            except Exception as e:
+                last_exception = e
+                logging.error(f"Error during attempt {attempt + 1}: {str(e)}")
+                continue
+            finally:
+                if driver:
+                    driver.quit()
+                    logging.info("Browser closed")
+                    
+        except Exception as e:
+            last_exception = e
+            logging.error(f"Outer error during attempt {attempt + 1}: {str(e)}")
+            continue
+            
+    raise last_exception
+
 def scrape_forex_factory_calendar():
     url = "https://www.forexfactory.com/calendar"
     
     logging.info("Starting scrape_forex_factory_calendar function")
-    env_vars = get_env_vars()
-    logging.info(f"Current working directory: {os.getcwd()}")
-    
-    chrome_options = get_chrome_options(env_vars['chrome_binary'])
     
     try:
-        logging.info(f"Using ChromeDriver at: {env_vars['chromedriver_path']}")
-        service = Service(
-            executable_path=env_vars['chromedriver_path'],
-            log_path='/tmp/chromedriver.log'
-        )
+        # Get page source with retry logic
+        page_source = scrape_with_retry(url)
         
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-        logging.info("Chrome driver initialized successfully")
-        
-        driver.implicitly_wait(10)
-        logging.info(f"Fetching data from {url}")
-        
-        try:
-            driver.get(url)
-            logging.info("Page loaded successfully")
-            
-            # Add a longer wait for the calendar
-            wait = WebDriverWait(driver, 20)
-            
-            # Wait for either class name that might be present
-            try:
-                calendar_table = wait.until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, ".calendar__table, .calendar_table"))
-                )
-                logging.info("Calendar table found on page")
-            except Exception as e:
-                logging.error(f"Timeout waiting for calendar table: {e}")
-                # Log the page source to see what we're getting
-                logging.info(f"Page source preview: {driver.page_source[:1000]}")
-                return []
-            
-            # Get the page source after we know the table has loaded
-            page_source = driver.page_source
-            logging.info(f"Retrieved page source, length: {len(page_source)}")
-            
-            # Save page source for debugging
-            with open('/tmp/calendar_page.html', 'w', encoding='utf-8') as f:
-                f.write(page_source)
-            logging.info("Saved page source to /tmp/calendar_page.html")
-            
-        except Exception as e:
-            logging.error(f"Error during page load: {e}")
-            return []
-        finally:
-            driver.quit()
-            logging.info("Browser closed")
-        
+        # Parse the content
         soup = BeautifulSoup(page_source, 'html.parser')
         logging.info("Created BeautifulSoup object")
         
@@ -166,7 +173,6 @@ def scrape_forex_factory_calendar():
         calendar_table = soup.find('table', class_=['calendar__table', 'calendar_table'])
         if not calendar_table:
             logging.error("Calendar table not found in parsed HTML")
-            # Log what tables we do find
             all_tables = soup.find_all('table')
             logging.info(f"Found {len(all_tables)} tables on the page")
             for i, table in enumerate(all_tables):
@@ -188,7 +194,6 @@ def scrape_forex_factory_calendar():
 
         for row in rows:
             try:
-                # Try both old and new class names for date
                 date_elem = row.find('td', class_='date') or row.find('td', class_='calendar__date')
                 if date_elem and date_elem.text.strip():
                     current_date = date_elem.text.strip()
@@ -230,10 +235,8 @@ def scrape_forex_factory_calendar():
         return events
 
     except Exception as e:
-        logging.error(f"Error scraping calendar: {str(e)}")
+        logging.error(f"Error in main scraping function: {str(e)}")
         logging.error(traceback.format_exc())
-        if 'driver' in locals():
-            driver.quit()
         return []
 
 if __name__ == '__main__':
