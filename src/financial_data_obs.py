@@ -3,12 +3,13 @@ import logging
 from datetime import datetime
 import time
 import random
+import json
+import brotli  # For decompressing the response
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def get_random_user_agent():
-    """Return a random modern user agent"""
     user_agents = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
@@ -18,16 +19,13 @@ def get_random_user_agent():
     return random.choice(user_agents)
 
 def fetch_with_retry(url, max_retries=3, initial_delay=1):
-    """Fetch data with exponential backoff retry logic"""
     headers = {
         'User-Agent': get_random_user_agent(),
         'Accept': 'application/json',
         'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br',
         'Referer': 'https://www.forexfactory.com/',
-        'Origin': 'https://www.forexfactory.com',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
+        'Origin': 'https://www.forexfactory.com'
     }
 
     for attempt in range(max_retries):
@@ -39,18 +37,24 @@ def fetch_with_retry(url, max_retries=3, initial_delay=1):
 
             response = requests.get(url, headers=headers, timeout=10)
             
-            # Log response information
             logging.info(f"Response status code: {response.status_code}")
             logging.info(f"Response headers: {dict(response.headers)}")
-            logging.info(f"Response content (first 500 chars): {response.text[:500]}")
             
             if response.status_code == 200:
-                # Verify we have actual content
-                if not response.text:
-                    logging.error("Empty response received")
-                    continue
-                    
-                return response
+                content_encoding = response.headers.get('Content-Encoding', '').lower()
+                try:
+                    if content_encoding == 'br':
+                        # Decompress brotli-encoded content
+                        raw_content = brotli.decompress(response.content)
+                        content = raw_content.decode('utf-8')
+                    else:
+                        content = response.text
+
+                    logging.info(f"Response content (first 500 chars): {content[:500]}")
+                    return content
+                except Exception as e:
+                    logging.error(f"Error decoding content: {e}")
+                    return None
             elif response.status_code == 429:
                 logging.warning(f"Rate limited on attempt {attempt + 1}")
                 retry_after = response.headers.get('Retry-After')
@@ -70,12 +74,9 @@ def fetch_with_retry(url, max_retries=3, initial_delay=1):
     return None
 
 def scrape_forex_factory_calendar():
-    """Fetch calendar data with retry logic"""
-    # Try different variations of the URL
     urls = [
         "https://nfs.faireconomy.media/ff_calendar_thisweek.json",
-        "https://nfs.faireconomy.media/ff_calendar_thisweek.json?version=latest",
-        # You can add more URL variations if needed
+        "https://nfs.faireconomy.media/ff_calendar_thisweek.json?version=latest"
     ]
     
     logging.info("Starting calendar data fetch")
@@ -83,18 +84,17 @@ def scrape_forex_factory_calendar():
     for url in urls:
         try:
             logging.info(f"Trying URL: {url}")
-            response = fetch_with_retry(url)
-            if not response:
+            content = fetch_with_retry(url)
+            if not content:
                 logging.error(f"Failed to fetch data from {url}")
                 continue
 
             try:
-                # Try to parse the response as JSON
-                data = response.json()
+                data = json.loads(content)
                 logging.info(f"Successfully parsed JSON response with {len(data)} events")
             except json.JSONDecodeError as e:
                 logging.error(f"JSON decode error: {e}")
-                logging.error(f"Raw response content: {response.text[:1000]}")
+                logging.error(f"Raw content: {content[:1000]}")
                 continue
 
             events = []
@@ -124,8 +124,8 @@ def scrape_forex_factory_calendar():
                 logging.debug(f"Adding event: {event_data}")
                 events.append(event_data)
             
-            if events:  # If we got events, we can return them
-                # Sort events by date and time
+            if events:
+                # Sort events
                 def sort_key(event):
                     try:
                         date_obj = datetime.strptime(event['date'], '%b %d')
