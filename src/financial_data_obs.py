@@ -39,11 +39,20 @@ def fetch_with_retry(url, max_retries=3, initial_delay=1):
 
             response = requests.get(url, headers=headers, timeout=10)
             
+            # Log response information
+            logging.info(f"Response status code: {response.status_code}")
+            logging.info(f"Response headers: {dict(response.headers)}")
+            logging.info(f"Response content (first 500 chars): {response.text[:500]}")
+            
             if response.status_code == 200:
+                # Verify we have actual content
+                if not response.text:
+                    logging.error("Empty response received")
+                    continue
+                    
                 return response
             elif response.status_code == 429:
                 logging.warning(f"Rate limited on attempt {attempt + 1}")
-                # If we have a Retry-After header, use it
                 retry_after = response.headers.get('Retry-After')
                 if retry_after:
                     time.sleep(int(retry_after))
@@ -62,80 +71,97 @@ def fetch_with_retry(url, max_retries=3, initial_delay=1):
 
 def scrape_forex_factory_calendar():
     """Fetch calendar data with retry logic"""
-    base_url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+    # Try different variations of the URL
+    urls = [
+        "https://nfs.faireconomy.media/ff_calendar_thisweek.json",
+        "https://nfs.faireconomy.media/ff_calendar_thisweek.json?version=latest",
+        # You can add more URL variations if needed
+    ]
     
     logging.info("Starting calendar data fetch")
     
-    try:
-        response = fetch_with_retry(base_url)
-        if not response:
-            logging.error("Failed to fetch data after all retries")
-            return []
-
-        data = response.json()
-        logging.info(f"Successfully parsed JSON response with {len(data)} events")
-        
-        events = []
-        for event in data:
-            currency = event.get('currency', '').upper()
-            if currency not in ["USD", "ALL"]:
+    for url in urls:
+        try:
+            logging.info(f"Trying URL: {url}")
+            response = fetch_with_retry(url)
+            if not response:
+                logging.error(f"Failed to fetch data from {url}")
                 continue
-            
+
             try:
-                date_str = event.get('date', '')
-                if date_str:
-                    date = datetime.fromtimestamp(int(date_str)).strftime('%b %d')
-                else:
-                    date = ''
-            except:
-                date = event.get('date', '')
-            
-            time = event.get('time', 'All Day')
-            
-            event_data = {
-                "date": date,
-                "time": time,
-                "currency": currency,
-                "event": event.get('title', '')
-            }
-            
-            logging.debug(f"Adding event: {event_data}")
-            events.append(event_data)
-        
-        # Sort events by date and time
-        def sort_key(event):
-            try:
-                date_obj = datetime.strptime(event['date'], '%b %d')
-                if date_obj.month < datetime.now().month:
-                    date_obj = date_obj.replace(year=datetime.now().year + 1)
-                else:
-                    date_obj = date_obj.replace(year=datetime.now().year)
+                # Try to parse the response as JSON
+                data = response.json()
+                logging.info(f"Successfully parsed JSON response with {len(data)} events")
+            except json.JSONDecodeError as e:
+                logging.error(f"JSON decode error: {e}")
+                logging.error(f"Raw response content: {response.text[:1000]}")
+                continue
+
+            events = []
+            for event in data:
+                currency = event.get('currency', '').upper()
+                if currency not in ["USD", "ALL"]:
+                    continue
                 
-                time_str = event['time']
-                if time_str == 'All Day':
-                    time_value = 0
-                else:
+                try:
+                    date_str = event.get('date', '')
+                    if date_str:
+                        date = datetime.fromtimestamp(int(date_str)).strftime('%b %d')
+                    else:
+                        date = ''
+                except:
+                    date = event.get('date', '')
+                
+                time = event.get('time', 'All Day')
+                
+                event_data = {
+                    "date": date,
+                    "time": time,
+                    "currency": currency,
+                    "event": event.get('title', '')
+                }
+                
+                logging.debug(f"Adding event: {event_data}")
+                events.append(event_data)
+            
+            if events:  # If we got events, we can return them
+                # Sort events by date and time
+                def sort_key(event):
                     try:
-                        time_obj = datetime.strptime(time_str, '%I:%M%p')
-                        time_value = time_obj.hour * 60 + time_obj.minute
+                        date_obj = datetime.strptime(event['date'], '%b %d')
+                        if date_obj.month < datetime.now().month:
+                            date_obj = date_obj.replace(year=datetime.now().year + 1)
+                        else:
+                            date_obj = date_obj.replace(year=datetime.now().year)
+                        
+                        time_str = event['time']
+                        if time_str == 'All Day':
+                            time_value = 0
+                        else:
+                            try:
+                                time_obj = datetime.strptime(time_str, '%I:%M%p')
+                                time_value = time_obj.hour * 60 + time_obj.minute
+                            except:
+                                time_value = 0
+                        
+                        return (date_obj, time_value)
                     except:
-                        time_value = 0
+                        return (datetime.max, 0)
                 
-                return (date_obj, time_value)
-            except:
-                return (datetime.max, 0)
+                events.sort(key=sort_key)
+                
+                logging.info(f"Total events found: {len(events)}")
+                if events:
+                    logging.info(f"First few events: {events[:2]}")
+                
+                return events
         
-        events.sort(key=sort_key)
-        
-        logging.info(f"Total events found: {len(events)}")
-        if events:
-            logging.info(f"First few events: {events[:2]}")
-        
-        return events
-        
-    except Exception as e:
-        logging.error(f"Error in main scraping function: {e}", exc_info=True)
-        return []
+        except Exception as e:
+            logging.error(f"Error processing URL {url}: {e}", exc_info=True)
+            continue
+    
+    logging.error("All URLs failed")
+    return []
 
 if __name__ == '__main__':
     scrape_forex_factory_calendar()
