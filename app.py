@@ -31,12 +31,18 @@ def get_calendar():
     try:
         calendar = scrape_forex_factory_calendar()
         if not calendar:
-            return jsonify({'error': 'No data available', 'message': 'Failed to fetch calendar data'}), 404
+            return jsonify({
+                'error': 'No data available', 
+                'message': 'Please try again in a few moments'
+            }), 503  # Service Temporarily Unavailable
         logging.info(f"Returning {len(calendar)} events")
         return jsonify(calendar)
     except Exception as e:
         logging.error(f"Error in get_calendar: {str(e)}")
-        return jsonify({'error': 'Server error', 'message': str(e)}), 500
+        return jsonify({
+            'error': 'Server error', 
+            'message': 'An error occurred while fetching the data'
+        }), 500
 
 @app.route('/')
 def serve_index():
