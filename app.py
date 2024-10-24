@@ -13,11 +13,15 @@ def timing_decorator(f):
     @wraps(f)
     def wrap(*args, **kw):
         ts = time()
+        result = None
         try:
             result = f(*args, **kw)
         except Exception as e:
             logging.error(f"Error in {f.__name__}: {str(e)}")
-            return jsonify({'error': 'Internal server error', 'message': str(e)}), 500
+            return jsonify({
+                'error': 'Internal server error',
+                'message': str(e)
+            }), 500
         finally:
             te = time()
             logging.info(f'Function: {f.__name__}, Time: {te-ts:2.4f} sec')
@@ -30,18 +34,21 @@ def get_calendar():
     logging.info("API endpoint /api/calendar called")
     try:
         calendar = scrape_forex_factory_calendar()
+        
         if not calendar:
             return jsonify({
-                'error': 'No data available', 
-                'message': 'Please try again in a few moments'
+                'error': 'No data available',
+                'message': 'Unable to fetch calendar data. Please try again later.'
             }), 503  # Service Temporarily Unavailable
+            
         logging.info(f"Returning {len(calendar)} events")
         return jsonify(calendar)
+        
     except Exception as e:
         logging.error(f"Error in get_calendar: {str(e)}")
         return jsonify({
-            'error': 'Server error', 
-            'message': 'An error occurred while fetching the data'
+            'error': 'Server error',
+            'message': 'An unexpected error occurred while fetching the data'
         }), 500
 
 @app.route('/')
