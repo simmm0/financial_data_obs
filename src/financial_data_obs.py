@@ -69,11 +69,25 @@ def scrape_forex_factory_calendar():
                         date = ''
                         time = 'All Day'
                     
+                    # Get impact and determine color
+                    impact = event.get('impact', '')
+                    impact_color = ''
+                    if impact.lower() == 'low':
+                        impact_color = '#ffd700'  # Yellow
+                    elif impact.lower() == 'medium':
+                        impact_color = '#ffa500'  # Orange
+                    elif impact.lower() == 'high':
+                        impact_color = '#ff0000'  # Red
+                    
                     event_data = {
                         "date": date,
                         "time": time,
-                        "currency": country,  # Using country as currency
-                        "event": event.get('title', '')
+                        "currency": country,
+                        "event": event.get('title', ''),
+                        "impact": impact,
+                        "impact_color": impact_color,
+                        "forecast": event.get('forecast', ''),
+                        "previous": event.get('previous', '')
                     }
                     
                     logging.debug(f"Adding event: {event_data}")

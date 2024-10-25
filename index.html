@@ -14,7 +14,7 @@
             font-size: 13px;
         }
         .container { 
-            max-width: 800px; 
+            max-width: 1000px; 
             margin: 0 auto;
             background: #f0f4f8;
             padding: 15px;
@@ -69,6 +69,15 @@
             font-weight: 600;
             width: 60px;
         }
+        .impact-cell {
+            width: 60px;
+            text-align: center;
+            font-weight: 600;
+        }
+        .forecast-cell, .previous-cell {
+            width: 80px;
+            text-align: right;
+        }
         td:first-child {
             width: 80px;
         }
@@ -107,6 +116,9 @@
                     <th>Time</th>
                     <th>Currency</th>
                     <th>Event</th>
+                    <th>Impact</th>
+                    <th>Forecast</th>
+                    <th>Previous</th>
                 </tr>
             </thead>
             <tbody>
@@ -122,11 +134,11 @@
             // Use the absolute path to the API endpoint
             fetch(window.location.origin + '/api/calendar')
                 .then(response => {
-                    console.log('API Response:', response.status);  // Debug logging
+                    console.log('API Response:', response.status);
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Calendar Data:', data);  // Debug logging
+                    console.log('Calendar Data:', data);
                     const tbody = document.querySelector('#calendar-table tbody');
                     tbody.innerHTML = '';
     
@@ -152,12 +164,30 @@
                             eventCell.textContent = event.event;
                             row.appendChild(eventCell);
                             
+                            const impactCell = document.createElement('td');
+                            impactCell.textContent = event.impact;
+                            impactCell.className = 'impact-cell';
+                            if (event.impact_color) {
+                                impactCell.style.color = event.impact_color;
+                            }
+                            row.appendChild(impactCell);
+                            
+                            const forecastCell = document.createElement('td');
+                            forecastCell.textContent = event.forecast;
+                            forecastCell.className = 'forecast-cell';
+                            row.appendChild(forecastCell);
+                            
+                            const previousCell = document.createElement('td');
+                            previousCell.textContent = event.previous;
+                            previousCell.className = 'previous-cell';
+                            row.appendChild(previousCell);
+                            
                             tbody.appendChild(row);
                         });
                     } else {
                         const row = document.createElement('tr');
                         const cell = document.createElement('td');
-                        cell.colSpan = 4;
+                        cell.colSpan = 7;
                         cell.textContent = 'No events found';
                         row.appendChild(cell);
                         tbody.appendChild(row);
@@ -173,7 +203,7 @@
                     
                     const row = document.createElement('tr');
                     const cell = document.createElement('td');
-                    cell.colSpan = 4;
+                    cell.colSpan = 7;
                     cell.textContent = 'Error loading data. Please try again later.';
                     row.appendChild(cell);
                     tbody.appendChild(row);
@@ -201,11 +231,10 @@
         }
     
         window.onload = function () {
-            console.log('Page loaded, fetching calendar data...');  // Debug logging
+            console.log('Page loaded, fetching calendar data...');
             fetchCalendarData();
             startTimer(300, document.querySelector('#time'));
         };
     </script>
-
 </body>
 </html>
